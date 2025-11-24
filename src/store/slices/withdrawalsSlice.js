@@ -89,7 +89,7 @@ const withdrawalsSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
-      
+
       // Approve withdrawal
       .addCase(approveWithdrawal.pending, (state, action) => {
         state.actionLoading = action.meta.arg.transactionId;
@@ -105,7 +105,7 @@ const withdrawalsSlice = createSlice({
         state.actionLoading = null;
         state.error = action.payload;
       })
-      
+
       // Reject withdrawal
       .addCase(rejectWithdrawal.pending, (state, action) => {
         state.actionLoading = action.meta.arg.transactionId;

@@ -12,7 +12,9 @@ import {
   Filter,
   Download,
   AlertCircle,
-  ArrowUpDown
+  ArrowUpDown,
+  TrendingDown,
+  Clock
 } from 'lucide-react';
 
 const Users = () => {
@@ -25,6 +27,8 @@ const Users = () => {
     totalWalletBalance,
     totalBonusBalance,
     grandTotal,
+    totalWithdrawals, // ✅ Completed withdrawals
+    pendingWithdrawals, // ✅ Pending withdrawals
     filters,
     error
   } = useSelector((state) => state.users);
@@ -101,9 +105,10 @@ const Users = () => {
         <div className="flex items-center space-x-3">
           <button
             onClick={handleRefresh}
-            className="bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg transition flex items-center space-x-2"
+            disabled={loading}
+            className="bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg transition flex items-center space-x-2 disabled:opacity-50"
           >
-            <RefreshCw size={18} />
+            <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
             <span>Refresh</span>
           </button>
           <button className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition flex items-center space-x-2">
@@ -113,8 +118,9 @@ const Users = () => {
         </div>
       </div>
 
-      {/* Stats Cards with Gradient */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      {/* Stats Cards - 6 Cards Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {/* Total Users */}
         <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl shadow-xl p-6 text-white transform hover:scale-105 transition duration-300">
           <div className="flex items-center justify-between">
             <div>
@@ -128,6 +134,7 @@ const Users = () => {
           </div>
         </div>
 
+        {/* Wallet Balance */}
         <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl shadow-xl p-6 text-white transform hover:scale-105 transition duration-300">
           <div className="flex items-center justify-between">
             <div>
@@ -141,6 +148,7 @@ const Users = () => {
           </div>
         </div>
 
+        {/* Bonus Balance */}
         <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl shadow-xl p-6 text-white transform hover:scale-105 transition duration-300">
           <div className="flex items-center justify-between">
             <div>
@@ -154,6 +162,35 @@ const Users = () => {
           </div>
         </div>
 
+        {/* Completed Withdrawals */}
+        <div className="bg-gradient-to-br from-red-500 to-red-600 rounded-2xl shadow-xl p-6 text-white transform hover:scale-105 transition duration-300">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-red-100 text-sm font-medium mb-1">Completed</p>
+              <p className="text-3xl font-bold">₹{(totalWithdrawals || 0).toLocaleString()}</p>
+              <p className="text-red-100 text-xs mt-2">Withdrawals paid</p>
+            </div>
+            <div className="bg-white bg-opacity-20 w-14 h-14 rounded-xl flex items-center justify-center">
+              <TrendingDown size={28} />
+            </div>
+          </div>
+        </div>
+
+        {/* Pending Withdrawals */}
+        <div className="bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-2xl shadow-xl p-6 text-white transform hover:scale-105 transition duration-300">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-yellow-100 text-sm font-medium mb-1">Pending</p>
+              <p className="text-3xl font-bold">₹{(pendingWithdrawals || 0).toLocaleString()}</p>
+              <p className="text-yellow-100 text-xs mt-2">Awaiting approval</p>
+            </div>
+            <div className="bg-white bg-opacity-20 w-14 h-14 rounded-xl flex items-center justify-center">
+              <Clock size={28} />
+            </div>
+          </div>
+        </div>
+
+        {/* Grand Total */}
         <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl shadow-xl p-6 text-white transform hover:scale-105 transition duration-300">
           <div className="flex items-center justify-between">
             <div>
@@ -300,7 +337,11 @@ const Users = () => {
                         <div>
                           <p className="font-semibold text-gray-900">{user.fullName}</p>
                           <p className="text-xs text-gray-500">
-                            {new Date(user.createdAt).toLocaleDateString()}
+                            {new Date(user.createdAt).toLocaleDateString('en-IN', {
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric'
+                            })}
                           </p>
                         </div>
                       </div>
@@ -325,11 +366,10 @@ const Users = () => {
                     </td>
                     <td className="px-6 py-4">
                       <span
-                        className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
-                          user.isVerified
-                            ? 'bg-green-100 text-green-700'
-                            : 'bg-yellow-100 text-yellow-700'
-                        }`}
+                        className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${user.isVerified
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-yellow-100 text-yellow-700'
+                          }`}
                       >
                         {user.isVerified ? '✓ Verified' : '⏳ Pending'}
                       </span>
@@ -351,7 +391,7 @@ const Users = () => {
         </div>
       )}
 
-      {/* Pagination (if needed) */}
+      {/* Pagination */}
       {users && users.length > 0 && (
         <div className="flex items-center justify-between bg-white rounded-2xl shadow-sm border border-gray-200 px-6 py-4">
           <p className="text-sm text-gray-600">

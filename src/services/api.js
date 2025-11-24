@@ -50,14 +50,25 @@ export const adminAPI = {
   approvePayment: (data) => api.post('/admin/payments/approve', data),
   rejectPayment: (data) => api.post('/admin/payments/reject', data),
 
-
-
-  // ✅ NEW: Withdrawals
+  // ✅ Withdrawals
   getPendingWithdrawals: (page = 1, limit = 20) =>
     api.get(`/admin/withdrawals/pending?page=${page}&limit=${limit}`),
   approveWithdrawal: (data) => api.post('/admin/withdrawals/approve', data),
   rejectWithdrawal: (data) => api.post('/admin/withdrawals/reject', data),
-
+  
+  // ✅ NEW: Get withdrawal statistics
+  getWithdrawalStats: () => {
+    console.log('🔵 getWithdrawalStats called');
+    return api.get('/admin/withdrawals/stats')
+      .then(response => {
+        console.log('✅ getWithdrawalStats success:', response.data);
+        return response;
+      })
+      .catch(error => {
+        console.error('❌ getWithdrawalStats error:', error.response?.data || error.message);
+        throw error;
+      });
+  },
 
   // Transactions
   getAllTransactions: (params) => api.get('/admin/transactions', { params }),
