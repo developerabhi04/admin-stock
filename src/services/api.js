@@ -39,33 +39,44 @@ api.interceptors.response.use(
 
 export const adminAPI = {
   // Auth
+  // 1
   login: (credentials) => api.post('/admin/login', credentials),
 
   // Dashboard
+  // 2
   getDashboardStats: () => api.get('/admin/dashboard/stats'),
+  // 3
+  getCompleteDashboardStats: () => api.get('/admin/dashboard/complete-stats'),
+
+
 
   // Payments
-  getPendingPayments: (page = 1, limit = 20) =>
-    api.get(`/admin/payments/pending?page=${page}&limit=${limit}`),
+  // 4
+  getPendingPayments: (page = 1, limit = 20) => api.get(`/admin/payments/pending?page=${page}&limit=${limit}`),
+  // 5
   approvePayment: (data) => api.post('/admin/payments/approve', data),
+  // 6
   rejectPayment: (data) => api.post('/admin/payments/reject', data),
 
+
+
   // ✅ Withdrawals
-  getPendingWithdrawals: (page = 1, limit = 20) =>
-    api.get(`/admin/withdrawals/pending?page=${page}&limit=${limit}`),
+  // 7
+  getPendingWithdrawals: (page = 1, limit = 20) => api.get(`/admin/withdrawals/pending?page=${page}&limit=${limit}`),
+  // 8
   approveWithdrawal: (data) => api.post('/admin/withdrawals/approve', data),
+  // 9
   rejectWithdrawal: (data) => api.post('/admin/withdrawals/reject', data),
-  
+
   // ✅ NEW: Get withdrawal statistics
   getWithdrawalStats: () => {
-    console.log('🔵 getWithdrawalStats called');
     return api.get('/admin/withdrawals/stats')
       .then(response => {
-        console.log('✅ getWithdrawalStats success:', response.data);
+        // console.log('✅ getWithdrawalStats success:', response.data);
         return response;
       })
       .catch(error => {
-        console.error('❌ getWithdrawalStats error:', error.response?.data || error.message);
+        // console.error('❌ getWithdrawalStats error:', error.response?.data || error.message);
         throw error;
       });
   },
