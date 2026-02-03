@@ -5,11 +5,13 @@ import { loadAdmin } from './store/slices/authSlice';
 import Login from './pages/Login';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
-import PendingPayments from './pages/PendingPayments';
+import PaymentManager from './pages/PaymentManager.jsx';
 import Transactions from './pages/Transactions';
 import UserDetails from './pages/UserDetails';
 import Users from './pages/User';
-import PendingWithdrawals from './pages/PendingWithdrawals';
+import MarketOverview from './pages/MarketOverview';
+import StocksManagement from './pages/StocksManagement';
+import IndicesManagement from './pages/IndicesManagement';
 
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useSelector((state) => state.auth);
@@ -45,13 +47,19 @@ function App() {
           }
         >
           <Route index element={<Dashboard />} />
-          <Route path="pending-payments" element={<PendingPayments />} />
-          <Route path="pending-withdrawals" element={<PendingWithdrawals />} />
-          <Route path="users" element={<Users />} /> 
-          <Route path="users/:userId" element={<UserDetails />} /> 
+
+          {/* Payment Manager with tabs */}
+          <Route path="payment-manager" element={<PaymentManager />} />
+          <Route path="payment-manager/payments" element={<PaymentManager defaultTab="payments" />} />
+          <Route path="payment-manager/withdrawals" element={<PaymentManager defaultTab="withdrawals" />} />
+
+          <Route path="users" element={<Users />} />
+          <Route path="users/:userId" element={<UserDetails />} />
           <Route path="transactions" element={<Transactions />} />
 
-
+          <Route path="market" element={<MarketOverview />} />
+          <Route path="market/stocks" element={<StocksManagement />} />
+          <Route path="market/indices" element={<IndicesManagement />} />
         </Route>
         <Route path="/" element={<Navigate to="/dashboard" />} />
       </Routes>

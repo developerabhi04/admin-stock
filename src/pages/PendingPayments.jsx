@@ -1,16 +1,16 @@
 import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { 
-  fetchPendingPayments, 
-  approvePayment, 
-  rejectPayment 
+import {
+  fetchPendingPayments,
+  approvePayment,
+  rejectPayment
 } from '../store/slices/paymentsSlice';
 import { Check, X, Clock, Phone, User } from 'lucide-react';
 
 const PendingPayments = () => {
   const dispatch = useDispatch();
   const { payments, loading, actionLoading } = useSelector((state) => state.payments);
-  
+
   const [rejectModal, setRejectModal] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
 
@@ -63,13 +63,8 @@ const PendingPayments = () => {
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">Pending Payments</h1>
-        <p className="text-gray-500 mt-2">Review and approve user payment requests</p>
-      </div>
-
       {payments.length === 0 ? (
-        <div className="bg-white rounded-xl shadow-sm p-12 text-center">
+        <div className="bg-gray-50 rounded-xl p-12 text-center">
           <Clock className="mx-auto text-gray-400 mb-4" size={48} />
           <h3 className="text-xl font-semibold text-gray-800 mb-2">No Pending Payments</h3>
           <p className="text-gray-500">All payment requests have been processed.</p>
@@ -79,7 +74,7 @@ const PendingPayments = () => {
           {payments.map((payment) => (
             <div
               key={payment._id}
-              className="bg-white rounded-xl shadow-sm p-6 hover:shadow-md transition"
+              className="bg-gray-50 rounded-xl p-6 hover:shadow-md transition"
             >
               <div className="flex items-start justify-between">
                 <div className="flex-1">

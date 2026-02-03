@@ -5,6 +5,7 @@ import paymentsReducer from './slices/paymentsSlice';
 import transactionsReducer from './slices/transactionsSlice';
 import usersReducer from './slices/usersSlice';
 import withdrawalsReducer from './slices/withdrawalsSlice';
+import marketReducer from './slices/marketSlice';
 
 export const store = configureStore({
   reducer: {
@@ -14,6 +15,7 @@ export const store = configureStore({
     transactions: transactionsReducer,
     users: usersReducer,
     withdrawals: withdrawalsReducer,
+    market: marketReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

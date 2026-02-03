@@ -37,6 +37,10 @@ api.interceptors.response.use(
   }
 );
 
+
+
+
+
 export const adminAPI = {
   // Auth
   // 1
@@ -100,6 +104,67 @@ export const adminAPI = {
   getUserStats: () => api.get('/admin/users/stats'),
   getUserDetails: (userId) => api.get(`/admin/users/${userId}`),
   updateUserBalance: (data) => api.post('/admin/users/update-balance', data),
+
+
+  // Get all stocks
+  getAllStocks: (params) => {
+    console.log('🔵 getAllStocks called with params:', params);
+    return api.get('/admin/stocks', { params })
+      .then(response => {
+        console.log('✅ getAllStocks success:', response.data);
+        return response;
+      })
+      .catch(error => {
+        console.error('❌ getAllStocks error:', error.response?.data || error.message);
+        throw error;
+      });
+  },
+
+  // Create stock
+  createStock: (data) => api.post('/admin/stocks', data),
+
+  // Update stock
+  updateStock: (stockId, data) => api.put(`/admin/stocks/${stockId}`, data),
+
+  // Delete stock
+  deleteStock: (stockId) => api.delete(`/admin/stocks/${stockId}`),
+
+  // Get featured stocks
+  getFeaturedStocks: () => api.get('/admin/stocks/featured'),
+
+
+  // ============ INDICES MANAGEMENT ============
+
+  // Get all indices
+  getAllIndices: (params) => {
+    console.log('🔵 getAllIndices called with params:', params);
+    return api.get('/admin/indices', { params })
+      .then(response => {
+        console.log('✅ getAllIndices success:', response.data);
+        return response;
+      })
+      .catch(error => {
+        console.error('❌ getAllIndices error:', error.response?.data || error.message);
+        throw error;
+      });
+  },
+
+  // Create index
+  createIndex: (data) => api.post('/admin/indices', data),
+
+  // Update index
+  updateIndex: (indexId, data) => api.put(`/admin/indices/${indexId}`, data),
+
+  // Delete index
+  deleteIndex: (indexId) => api.delete(`/admin/indices/${indexId}`),
+
+  // Get featured indices
+  getFeaturedIndices: () => api.get('/admin/indices/featured'),
+
+
+  // ============ MARKET DATA STATS ============
+
+  getMarketStats: () => api.get('/admin/market/stats'),
 };
 
 export default api;

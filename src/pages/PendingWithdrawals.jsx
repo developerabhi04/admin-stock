@@ -1,18 +1,16 @@
 import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { 
-  fetchPendingWithdrawals, 
-  approveWithdrawal, 
-  rejectWithdrawal 
+import {
+  fetchPendingWithdrawals,
+  approveWithdrawal,
+  rejectWithdrawal
 } from '../store/slices/withdrawalsSlice';
 import { Check, X, Clock, Phone, User, Building } from 'lucide-react';
-
-
 
 const PendingWithdrawals = () => {
   const dispatch = useDispatch();
   const { withdrawals, loading, actionLoading } = useSelector((state) => state.withdrawals);
-  
+
   const [approveModal, setApproveModal] = useState(null);
   const [rejectModal, setRejectModal] = useState(null);
   const [utrNumber, setUtrNumber] = useState('');
@@ -73,13 +71,8 @@ const PendingWithdrawals = () => {
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">Pending Withdrawals</h1>
-        <p className="text-gray-500 mt-2">Review and process user withdrawal requests</p>
-      </div>
-
       {withdrawals.length === 0 ? (
-        <div className="bg-white rounded-xl shadow-sm p-12 text-center">
+        <div className="bg-gray-50 rounded-xl p-12 text-center">
           <Clock className="mx-auto text-gray-400 mb-4" size={48} />
           <h3 className="text-xl font-semibold text-gray-800 mb-2">No Pending Withdrawals</h3>
           <p className="text-gray-500">All withdrawal requests have been processed.</p>
@@ -89,7 +82,7 @@ const PendingWithdrawals = () => {
           {withdrawals.map((withdrawal) => (
             <div
               key={withdrawal._id}
-              className="bg-white rounded-xl shadow-sm p-6 hover:shadow-md transition"
+              className="bg-gray-50 rounded-xl p-6 hover:shadow-md transition"
             >
               <div className="flex items-start justify-between">
                 <div className="flex-1">
@@ -138,7 +131,7 @@ const PendingWithdrawals = () => {
                   </div>
 
                   {/* Bank Details */}
-                  <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                  <div className="bg-white rounded-lg p-4 mb-4">
                     <div className="flex items-center space-x-2 mb-2">
                       <Building size={16} className="text-gray-600" />
                       <p className="font-semibold text-gray-800">Bank Details</p>

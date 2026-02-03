@@ -4,20 +4,24 @@ import { useNavigate } from 'react-router-dom';
 import { login, clearError } from '../store/slices/authSlice';
 import { Lock, User, AlertCircle } from 'lucide-react';
 
-
 const Login = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  
-  const { loading, error, isAuthenticated } = useSelector((state) => state.auth);
 
+  const { loading, error, isAuthenticated, admin } = useSelector((state) => state.auth);
+
+  // ✅ Redirect based on role when already authenticated
   useEffect(() => {
-    if (isAuthenticated) {
-      navigate('/dashboard');
+    if (isAuthenticated && admin) {
+      if (admin.role === 'super_admin') {
+        navigate('/dashboard');
+      } else if (admin.role === 'payment_manager') {
+        navigate('/dashboard/payment-manager');
+      }
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, admin, navigate]);
 
   useEffect(() => {
     return () => {
@@ -25,12 +29,23 @@ const Login = () => {
     };
   }, [dispatch]);
 
+  // ✅ Handle login with role-based redirect
   const handleSubmit = async (e) => {
     e.preventDefault();
     const result = await dispatch(login({ username, password }));
-    
+
     if (login.fulfilled.match(result)) {
-      navigate('/dashboard');
+      const adminData = result.payload.admin;
+
+      // ✅ Redirect based on role
+      if (adminData.role === 'super_admin') {
+        navigate('/dashboard');
+      } else if (adminData.role === 'payment_manager') {
+        navigate('/dashboard/payment-manager');
+      } else {
+        // Fallback for other roles
+        navigate('/dashboard');
+      }
     }
   };
 
@@ -104,7 +119,11 @@ const Login = () => {
 
         {/* Footer */}
         <div className="mt-6 text-center text-sm text-gray-500">
-          <p>Default credentials: admin / admin123</p>
+          <p className="mb-2 font-semibold">Test Credentials:</p>
+          <div className="space-y-1 bg-gray-50 p-3 rounded-lg">
+            <p><span className="font-medium">Super Admin:</span> superadmin / admin123</p>
+            <p><span className="font-medium">Payment Manager:</span> paymentmanager / payment123</p>
+          </div>
         </div>
       </div>
     </div>

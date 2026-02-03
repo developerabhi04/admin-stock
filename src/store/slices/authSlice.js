@@ -17,11 +17,12 @@ export const login = createAsyncThunk(
     try {
       const response = await adminAPI.login(credentials);
       const { admin, token } = response.data.data;
-      
-      // Save to localStorage
+
+      // ✅ Save to localStorage (including role)
       localStorage.setItem('adminToken', token);
       localStorage.setItem('adminData', JSON.stringify(admin));
-      
+      localStorage.setItem('adminRole', admin.role); // ✅ Save role separately for easy access
+
       return { admin, token };
     } catch (error) {
       return rejectWithValue(
@@ -42,11 +43,12 @@ const authSlice = createSlice({
       state.isAuthenticated = false;
       localStorage.removeItem('adminToken');
       localStorage.removeItem('adminData');
+      localStorage.removeItem('adminRole'); // ✅ Clear role
     },
     loadAdmin: (state) => {
       const token = localStorage.getItem('adminToken');
       const adminData = localStorage.getItem('adminData');
-      
+
       if (token && adminData) {
         state.token = token;
         state.admin = JSON.parse(adminData);

@@ -3,12 +3,12 @@ import { useDispatch, useSelector } from 'react-redux';
 import { logout } from '../store/slices/authSlice';
 import {
   LayoutDashboard,
-  CreditCard,
+  Wallet,
   List,
   LogOut,
   User,
-  Users, // ✅ Make sure this is imported
-  TrendingDown
+  Users,
+  TrendingUp
 } from 'lucide-react';
 
 const Layout = () => {
@@ -21,13 +21,56 @@ const Layout = () => {
     navigate('/login');
   };
 
-  const navItems = [
-    { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-    { path: '/dashboard/users', icon: Users, label: 'User Management' },
-    { path: '/dashboard/pending-payments', icon: CreditCard, label: 'Pending Payments' },
-    { path: '/dashboard/pending-withdrawals', icon: TrendingDown, label: 'Pending Withdrawals' },
-    { path: '/dashboard/transactions', icon: List, label: 'All Transactions' },
+  // ✅ Define all nav items with role restrictions
+  const allNavItems = [
+    {
+      path: '/dashboard',
+      icon: LayoutDashboard,
+      label: 'Dashboard',
+      roles: ['super_admin'] // Only super admin
+    },
+    {
+      path: '/dashboard/users',
+      icon: Users,
+      label: 'User Management',
+      roles: ['super_admin'] // Only super admin
+    },
+    {
+      path: '/dashboard/payment-manager',
+      icon: Wallet,
+      label: 'Payment Manager',
+      roles: ['super_admin', 'payment_manager'] // Both can access
+    },
+    {
+      path: '/dashboard/market',
+      icon: TrendingUp,
+      label: 'Market Data',
+      roles: ['super_admin'] // Only super admin
+    },
+    {
+      path: '/dashboard/transactions',
+      icon: List,
+      label: 'All Transactions',
+      roles: ['super_admin'] // Only super admin
+    },
   ];
+
+  // ✅ Filter nav items based on admin role
+  const navItems = allNavItems.filter(item =>
+    item.roles.includes(admin?.role)
+  );
+
+  // ✅ Get role display name
+  const getRoleDisplay = (role) => {
+    switch (role) {
+      case 'super_admin':
+        return 'Super Admin';
+      case 'payment_manager':
+        return 'Payment Manager';
+      default:
+        return 'Admin';
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -37,6 +80,15 @@ const Layout = () => {
         <div className="p-6 border-b">
           <h1 className="text-2xl font-bold text-blue-600">TradeHub</h1>
           <p className="text-sm text-gray-500">Admin Panel</p>
+          {/* ✅ Role Badge */}
+          <div className="mt-2">
+            <span className={`inline-block px-3 py-1 text-xs font-semibold rounded-full ${admin?.role === 'super_admin'
+              ? 'bg-blue-100 text-blue-700'
+              : 'bg-purple-100 text-purple-700'
+              }`}>
+              {getRoleDisplay(admin?.role)}
+            </span>
+          </div>
         </div>
 
         {/* Navigation */}
@@ -67,7 +119,7 @@ const Layout = () => {
               </div>
               <div>
                 <p className="font-medium text-gray-800">{admin?.fullName}</p>
-                <p className="text-xs text-gray-500">{admin?.role}</p>
+                <p className="text-xs text-gray-500">{getRoleDisplay(admin?.role)}</p>
               </div>
             </div>
             <button
