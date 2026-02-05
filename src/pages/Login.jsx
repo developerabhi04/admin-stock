@@ -12,12 +12,24 @@ const Login = () => {
 
   const { loading, error, isAuthenticated, admin } = useSelector((state) => state.auth);
 
-  // ✅ Redirect based on role when already authenticated
+  // ✅ Redirect based on role and allowedRoutes when already authenticated
   useEffect(() => {
     if (isAuthenticated && admin) {
+      console.log('✅ Already authenticated:', {
+        role: admin.role,
+        allowedRoutes: admin.allowedRoutes
+      });
+
       if (admin.role === 'super_admin') {
+        console.log('📍 Redirecting super admin to /dashboard');
         navigate('/dashboard');
-      } else if (admin.role === 'payment_manager') {
+      } else if (admin.allowedRoutes && admin.allowedRoutes.length > 0) {
+        // Redirect to first allowed route
+        console.log('📍 Redirecting admin to first allowed route:', admin.allowedRoutes[0]);
+        navigate(admin.allowedRoutes[0]);
+      } else {
+        // Fallback
+        console.log('📍 Redirecting to fallback /dashboard/payment-manager');
         navigate('/dashboard/payment-manager');
       }
     }
@@ -29,22 +41,35 @@ const Login = () => {
     };
   }, [dispatch]);
 
-  // ✅ Handle login with role-based redirect
+  // ✅ Handle login with allowedRoutes-based redirect
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    console.log('🔵 Attempting login for:', username);
+
     const result = await dispatch(login({ username, password }));
 
     if (login.fulfilled.match(result)) {
       const adminData = result.payload.admin;
 
-      // ✅ Redirect based on role
+      console.log('✅ Login successful:', {
+        username: adminData.username,
+        role: adminData.role,
+        allowedRoutes: adminData.allowedRoutes
+      });
+
+      // ✅ Redirect based on role and allowedRoutes
       if (adminData.role === 'super_admin') {
+        console.log('📍 Redirecting super admin to /dashboard');
         navigate('/dashboard');
-      } else if (adminData.role === 'payment_manager') {
-        navigate('/dashboard/payment-manager');
+      } else if (adminData.allowedRoutes && adminData.allowedRoutes.length > 0) {
+        // Redirect to first allowed route
+        console.log('📍 Redirecting admin to first allowed route:', adminData.allowedRoutes[0]);
+        navigate(adminData.allowedRoutes[0]);
       } else {
-        // Fallback for other roles
-        navigate('/dashboard');
+        // Fallback for admins without allowedRoutes
+        console.log('📍 Redirecting to fallback /dashboard/payment-manager');
+        navigate('/dashboard/payment-manager');
       }
     }
   };
@@ -85,6 +110,7 @@ const Login = () => {
                 className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                 placeholder="Enter username"
                 required
+                disabled={loading}
               />
             </div>
           </div>
@@ -103,6 +129,7 @@ const Login = () => {
                 className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                 placeholder="Enter password"
                 required
+                disabled={loading}
               />
             </div>
           </div>
@@ -111,9 +138,16 @@ const Login = () => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 rounded-lg transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 rounded-lg transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
-            {loading ? 'Signing in...' : 'Sign In'}
+            {loading ? (
+              <>
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                Signing in...
+              </>
+            ) : (
+              'Sign In'
+            )}
           </button>
         </form>
 
@@ -122,7 +156,7 @@ const Login = () => {
           <p className="mb-2 font-semibold">Test Credentials:</p>
           <div className="space-y-1 bg-gray-50 p-3 rounded-lg">
             <p><span className="font-medium">Super Admin:</span> superadmin / admin123</p>
-            <p><span className="font-medium">Payment Manager:</span> paymentmanager / payment123</p>
+            <p><span className="font-medium">Admin:</span> Create from admin panel</p>
           </div>
         </div>
       </div>

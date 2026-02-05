@@ -2,7 +2,7 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { adminAPI } from '../../services/api';
 
 const initialState = {
-  withdrawals: [],
+  withdrawals: undefined,
   totalPages: 0,
   currentPage: 1,
   totalPending: 0,
@@ -70,6 +70,16 @@ const withdrawalsSlice = createSlice({
     clearWithdrawalsError: (state) => {
       state.error = null;
     },
+    // ✅ NEW: Clear all withdrawals data
+    clearWithdrawals: (state) => {
+      state.withdrawals = undefined;
+      state.totalPages = 0;
+      state.currentPage = 1;
+      state.totalPending = 0;
+      state.loading = false;
+      state.actionLoading = null;
+      state.error = null;
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -124,5 +134,5 @@ const withdrawalsSlice = createSlice({
   },
 });
 
-export const { clearWithdrawalsError } = withdrawalsSlice.actions;
+export const { clearWithdrawalsError, clearWithdrawals } = withdrawalsSlice.actions;
 export default withdrawalsSlice.reducer;

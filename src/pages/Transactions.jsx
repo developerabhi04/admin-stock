@@ -2,16 +2,17 @@ import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchTransactions, setFilters } from '../store/slices/transactionsSlice';
 import { Filter } from 'lucide-react';
+import Loading from '../components/Loader';
 
 const Transactions = () => {
   const dispatch = useDispatch();
   const { transactions, loading, filters } = useSelector((state) => state.transactions);
 
   useEffect(() => {
-    dispatch(fetchTransactions({ 
-      page: 1, 
-      limit: 50, 
-      ...filters 
+    dispatch(fetchTransactions({
+      page: 1,
+      limit: 50,
+      ...filters
     }));
   }, [dispatch, filters]);
 
@@ -30,11 +31,7 @@ const Transactions = () => {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-      </div>
-    );
+    return <Loading message="Loading All Transactions..." />;
   }
 
   return (

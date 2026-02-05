@@ -22,6 +22,7 @@ import {
     TrendingDown,
     Globe,
 } from 'lucide-react';
+import Loading from '../components/Loader';
 
 const IndicesManagement = () => {
     const dispatch = useDispatch();
@@ -186,15 +187,7 @@ const IndicesManagement = () => {
     };
 
     if (loading && indices.length === 0) {
-        return (
-            <div className="flex flex-col items-center justify-center h-screen">
-                <div className="relative">
-                    <div className="w-20 h-20 border-4 border-green-200 rounded-full"></div>
-                    <div className="w-20 h-20 border-4 border-green-500 rounded-full animate-spin border-t-transparent absolute top-0"></div>
-                </div>
-                <p className="mt-6 text-gray-600 font-medium animate-pulse">Loading indices...</p>
-            </div>
-        );
+        return <Loading message="Loading Indices..." />;
     }
 
     return (

@@ -2,7 +2,7 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { adminAPI } from '../../services/api';
 
 const initialState = {
-  payments: [],
+  payments: undefined,
   totalPages: 0,
   currentPage: 1,
   totalPending: 0,
@@ -72,6 +72,16 @@ const paymentsSlice = createSlice({
     setCurrentPage: (state, action) => {
       state.currentPage = action.payload;
     },
+    // ✅ NEW: Clear all payments data
+    clearPayments: (state) => {
+      state.payments = undefined;
+      state.totalPages = 0;
+      state.currentPage = 1;
+      state.totalPending = 0;
+      state.loading = false;
+      state.actionLoading = null;
+      state.error = null;
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -91,7 +101,7 @@ const paymentsSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
-      
+
       // Approve payment
       .addCase(approvePayment.pending, (state, action) => {
         state.actionLoading = action.meta.arg.transactionId;
@@ -107,7 +117,7 @@ const paymentsSlice = createSlice({
         state.actionLoading = null;
         state.error = action.payload;
       })
-      
+
       // Reject payment
       .addCase(rejectPayment.pending, (state, action) => {
         state.actionLoading = action.meta.arg.transactionId;
@@ -126,5 +136,5 @@ const paymentsSlice = createSlice({
   },
 });
 
-export const { clearPaymentsError, setCurrentPage } = paymentsSlice.actions;
+export const { clearPaymentsError, setCurrentPage, clearPayments } = paymentsSlice.actions;
 export default paymentsSlice.reducer;

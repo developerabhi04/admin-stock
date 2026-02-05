@@ -20,6 +20,7 @@ import {
     AlertCircle,
     TrendingDown,
 } from 'lucide-react';
+import Loading from '../components/Loader';
 
 const StocksManagement = () => {
     const dispatch = useDispatch();
@@ -158,15 +159,7 @@ const StocksManagement = () => {
     };
 
     if (loading && stocks.length === 0) {
-        return (
-            <div className="flex flex-col items-center justify-center h-screen">
-                <div className="relative">
-                    <div className="w-20 h-20 border-4 border-blue-200 rounded-full"></div>
-                    <div className="w-20 h-20 border-4 border-blue-500 rounded-full animate-spin border-t-transparent absolute top-0"></div>
-                </div>
-                <p className="mt-6 text-gray-600 font-medium animate-pulse">Loading stocks...</p>
-            </div>
-        );
+        return <Loading message="Loading Stocks..." />;
     }
 
     return (
@@ -275,8 +268,8 @@ const StocksManagement = () => {
                             <button
                                 onClick={() => dispatch(setFilters({ category: '' }))}
                                 className={`px-4 py-2 rounded-lg text-sm font-medium transition ${filters.category === ''
-                                        ? 'bg-blue-500 text-white'
-                                        : 'bg-gray-50 hover:bg-gray-100 text-gray-700'
+                                    ? 'bg-blue-500 text-white'
+                                    : 'bg-gray-50 hover:bg-gray-100 text-gray-700'
                                     }`}
                             >
                                 All Categories
@@ -284,8 +277,8 @@ const StocksManagement = () => {
                             <button
                                 onClick={() => dispatch(setFilters({ category: 'stock' }))}
                                 className={`px-4 py-2 rounded-lg text-sm font-medium transition ${filters.category === 'stock'
-                                        ? 'bg-blue-500 text-white'
-                                        : 'bg-gray-50 hover:bg-gray-100 text-gray-700'
+                                    ? 'bg-blue-500 text-white'
+                                    : 'bg-gray-50 hover:bg-gray-100 text-gray-700'
                                     }`}
                             >
                                 Stocks
@@ -293,8 +286,8 @@ const StocksManagement = () => {
                             <button
                                 onClick={() => dispatch(setFilters({ featured: 'true' }))}
                                 className={`px-4 py-2 rounded-lg text-sm font-medium transition ${filters.featured === 'true'
-                                        ? 'bg-yellow-500 text-white'
-                                        : 'bg-gray-50 hover:bg-gray-100 text-gray-700'
+                                    ? 'bg-yellow-500 text-white'
+                                    : 'bg-gray-50 hover:bg-gray-100 text-gray-700'
                                     }`}
                             >
                                 Featured Only
@@ -349,8 +342,8 @@ const StocksManagement = () => {
                                 <button
                                     onClick={() => handleToggleFeatured(stock)}
                                     className={`p-2 rounded-lg transition ${stock.featured
-                                            ? 'bg-yellow-100 text-yellow-600'
-                                            : 'bg-gray-100 text-gray-400 hover:bg-yellow-100 hover:text-yellow-600'
+                                        ? 'bg-yellow-100 text-yellow-600'
+                                        : 'bg-gray-100 text-gray-400 hover:bg-yellow-100 hover:text-yellow-600'
                                         }`}
                                 >
                                     <Star size={18} className={stock.featured ? 'fill-current' : ''} />

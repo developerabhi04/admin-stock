@@ -88,6 +88,7 @@ export const adminAPI = {
   // Transactions
   getAllTransactions: (params) => api.get('/admin/transactions', { params }),
 
+
   // ✅ User Management with detailed logging
   getAllUsers: (params) => {
     console.log('🔵 getAllUsers called with params:', params);
@@ -165,6 +166,162 @@ export const adminAPI = {
   // ============ MARKET DATA STATS ============
 
   getMarketStats: () => api.get('/admin/market/stats'),
+
+
+  // ============ BANNER MANAGEMENT ============
+
+  // ============ BANNER MANAGEMENT ============
+
+  getAllBanners: () => {
+    console.log('🔵 getAllBanners called');
+    return api.get('/banners')
+      .then(response => {
+        console.log('✅ getAllBanners response:', response.data);
+        return response;
+      })
+      .catch(error => {
+        console.error('❌ getAllBanners error:', error.response?.data || error.message);
+        throw error;
+      });
+  },
+
+
+  // ✅ Upload banner with file (use FormData)
+  uploadBanner: (formData) => {
+    return api.post('/banners', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+  },
+
+  deleteBanner: (bannerId) => api.delete(`/banners/${bannerId}`),
+
+  toggleBannerStatus: (bannerId) => api.patch(`/banners/${bannerId}/toggle`),
+
+  reorderBanners: (banners) => api.post('/banners/reorder', { banners }),
+
+  // Add these to your existing adminAPI object:
+
+  // ============ PUSH NOTIFICATIONS ============
+
+  sendNotificationToAll: (data) => {
+    console.log('🔵 sendNotificationToAll called with:', data);
+    return api.post('/admin/notifications/send-all', data);
+  },
+
+  sendNotificationToUser: (userId, data) => {
+    console.log('🔵 sendNotificationToUser called:', userId, data);
+    return api.post(`/admin/notifications/send/${userId}`, data);
+  },
+
+  getNotificationHistory: (params) => {
+    return api.get('/admin/notifications/history', { params });
+  },
+
+  // ============ INDEX CATEGORIES ============
+
+  // getAllCategories: () => {
+  //   console.log('🔵 getAllCategories called');
+  //   return api.get('/admin/categories');
+  // },
+
+  // createCategory: (data) => api.post('/admin/categories', data),
+
+  // updateCategory: (categoryId, data) => api.put(`/admin/categories/${categoryId}`, data),
+
+  // deleteCategory: (categoryId) => api.delete(`/admin/categories/${categoryId}`),
+
+  // ============ KYC MANAGEMENT ============
+
+  getAllKYC: (params) => {
+    console.log('🔵 getAllKYC called with params:', params);
+    return api.get('/admin/kyc', { params });
+  },
+
+  approveKYC: (kycId) => api.post(`/admin/kyc/${kycId}/approve`),
+
+  rejectKYC: (kycId, reason) => api.post(`/admin/kyc/${kycId}/reject`, { reason }),
+
+  getKYCStats: () => api.get('/admin/kyc/stats'),
+
+  // ============ REPORTS & ANALYTICS ============
+
+  getReports: (params) => {
+    console.log('🔵 getReports called with params:', params);
+    return api.get('/admin/reports', { params });
+  },
+
+  getTransactionReports: (params) => api.get('/admin/reports/transactions', { params }),
+
+  getUserGrowthReport: (params) => api.get('/admin/reports/user-growth', { params }),
+
+  getRevenueReport: (params) => api.get('/admin/reports/revenue', { params }),
+
+  // ============ ADMIN MANAGEMENT ============
+
+  // getAllAdmins: () => {
+  //   console.log('🔵 getAllAdmins called');
+  //   return api.get('/admin/admins');
+  // },
+
+  // createAdmin: (data) => api.post('/admin/admins/create', data),
+
+  // updateAdminRole: (adminId, role) => api.put(`/admin/admins/${adminId}/role`, { role }),
+
+  // deleteAdmin: (adminId) => api.delete(`/admin/admins/${adminId}`),
+
+  // getAdminActivity: (adminId) => api.get(`/admin/admins/${adminId}/activity`),
+
+  // ============ ADMIN MANAGEMENT ============
+
+  createAdmin: (data) => {
+    console.log('🔵 createAdmin called with:', data);
+    return api.post('/admin/admins/create', data);
+  },
+
+  getAllAdmins: () => {
+    console.log('🔵 getAllAdmins called');
+    return api.get('/admin/admins');
+  },
+
+  updateAdminRole: (adminId, role) => {
+    console.log('🔵 updateAdminRole called:', adminId, role);
+    return api.put(`/admin/admins/${adminId}/role`, { role });
+  },
+
+  deleteAdmin: (adminId) => {
+    console.log('🔵 deleteAdmin called:', adminId);
+    return api.delete(`/admin/admins/${adminId}`);
+  },
+
+  getAdminActivity: (adminId) => {
+    console.log('🔵 getAdminActivity called:', adminId);
+    return api.get(`/admin/admins/${adminId}/activity`);
+  },
+
+  // Backward compatibility
+  createPaymentManager: (data) => {
+    return api.post('/admin/create-payment-manager', data);
+  },
+
+
+
+
+  // ============ INDEX CATEGORIES ============
+
+  getAllCategories: () => {
+    console.log('🔵 getAllCategories called');
+    return api.get('/admin/categories');
+  },
+
+  createCategory: (data) => api.post('/admin/categories', data),
+
+  updateCategory: (categoryId, data) => api.put(`/admin/categories/${categoryId}`, data),
+
+  deleteCategory: (categoryId) => api.delete(`/admin/categories/${categoryId}`),
+
+
 };
 
 export default api;
