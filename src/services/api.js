@@ -207,16 +207,30 @@ export const adminAPI = {
 
   sendNotificationToAll: (data) => {
     console.log('🔵 sendNotificationToAll called with:', data);
-    return api.post('/admin/notifications/send-all', data);
+    return api.post('/notifications/admin/send-all', data);
   },
 
   sendNotificationToUser: (userId, data) => {
     console.log('🔵 sendNotificationToUser called:', userId, data);
-    return api.post(`/admin/notifications/send/${userId}`, data);
+    return api.post(`/notifications/admin/send/${userId}`, data);
   },
 
   getNotificationHistory: (params) => {
-    return api.get('/admin/notifications/history', { params });
+    return api.get('/notifications/admin/history', { params });
+  },
+
+  // ✅ ADD THIS — scoped users list, no /admin/users dependency
+  getUsersForNotification: () => {
+    console.log('🔵 getUsersForNotification called');
+    return api.get('/notifications/admin/users-list')
+      .then(response => {
+        console.log('✅ getUsersForNotification success:', response.data);
+        return response;
+      })
+      .catch(error => {
+        console.error('❌ getUsersForNotification error:', error.response?.data || error.message);
+        throw error;
+      });
   },
 
   // ============ INDEX CATEGORIES ============

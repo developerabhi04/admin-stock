@@ -36,7 +36,7 @@ const PushNotifications = () => {
     const fetchUsers = async () => {
         try {
             setLoading(true);
-            const response = await adminAPI.getAllUsers({ limit: 1000 });
+            const response = await adminAPI.getUsersForNotification();
             setUsers(response.data.data.users || []);
         } catch (error) {
             console.error('Error fetching users:', error);
@@ -231,9 +231,10 @@ const PushNotifications = () => {
                                             <option value="">-- Select a user --</option>
                                             {users.map((user) => (
                                                 <option key={user._id} value={user._id}>
-                                                    {user.fullName} ({user.phone}) - Wallet: ₹{user.wallet?.balance?.toFixed(2) || 0}
+                                                    {user.fullName} ({user.phoneNumber}) — Wallet: ₹{user.walletBalance?.toFixed(2) || '0.00'} | Joined: {new Date(user.createdAt).toLocaleDateString('en-IN')}
                                                 </option>
                                             ))}
+
                                         </select>
                                     )}
                                 </div>
