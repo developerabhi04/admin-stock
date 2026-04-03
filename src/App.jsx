@@ -19,9 +19,7 @@ import KYCManagement from './pages/KYCManagement';
 import Reports from './pages/Reports';
 import AdminManagement from './pages/AdminManagement';
 
-/**
- * ✅ FIXED: Check if admin has access to current route
- */
+
 /**
  * ✅ FIXED: Check if admin has access to current route (including sub-routes)
  */
