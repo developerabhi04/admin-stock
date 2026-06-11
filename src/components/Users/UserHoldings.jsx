@@ -1,93 +1,130 @@
-import { TrendingUp, TrendingDown, Target, Percent } from 'lucide-react';
+import { TrendingUp, TrendingDown, Target } from 'lucide-react';
 
-const UserHoldings = ({ holdings, portfolio }) => {
+const formatCurrency = (value) => `₹${Number(value || 0).toLocaleString('en-IN')}`;
+const formatNumber = (value) => Number(value || 0).toLocaleString('en-IN');
+
+const UserHoldings = ({ holdings = [], portfolio = {} }) => {
     return (
-        <div className="bg-white rounded-2xl shadow-lg border-2 border-gray-100 p-6 mb-8">
-            <div className="flex items-center justify-between mb-6">
+        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div>
-                    <h3 className="text-2xl font-bold text-gray-900">Holdings</h3>
-                    <p className="text-sm text-gray-500 mt-1">Active index investments</p>
+                    <h3 className="text-2xl font-bold text-slate-900">Holdings</h3>
+                    <p className="mt-1 text-sm text-slate-500">Active index investments</p>
                 </div>
-                <div className="flex gap-4">
-                    <div className="text-right">
-                        <p className="text-sm text-gray-500">Total Invested</p>
-                        <p className="text-xl font-bold text-gray-900">₹{portfolio.totalInvested.toLocaleString()}</p>
+
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div className="rounded-2xl bg-slate-50 px-4 py-3">
+                        <p className="text-sm text-slate-500">Total Invested</p>
+                        <p className="mt-1 text-xl font-bold text-slate-900">
+                            {formatCurrency(portfolio.totalInvested)}
+                        </p>
                     </div>
-                    <div className="text-right">
-                        <p className="text-sm text-gray-500">Current Value</p>
-                        <p className="text-xl font-bold text-blue-600">₹{portfolio.currentValue.toLocaleString()}</p>
+                    <div className="rounded-2xl bg-blue-50 px-4 py-3">
+                        <p className="text-sm text-slate-500">Current Value</p>
+                        <p className="mt-1 text-xl font-bold text-blue-600">
+                            {formatCurrency(portfolio.currentValue)}
+                        </p>
                     </div>
                 </div>
             </div>
 
             <div className="overflow-x-auto">
-                {holdings?.length > 0 ? (
-                    <table className="w-full">
+                {holdings.length > 0 ? (
+                    <table className="min-w-full">
                         <thead>
-                            <tr className="border-b-2 border-gray-200 bg-gray-50">
-                                <th className="text-left py-3 px-4 text-xs font-bold text-gray-600 uppercase">Index</th>
-                                <th className="text-center py-3 px-4 text-xs font-bold text-gray-600 uppercase">Qty</th>
-                                <th className="text-right py-3 px-4 text-xs font-bold text-gray-600 uppercase">Avg Price</th>
-                                <th className="text-right py-3 px-4 text-xs font-bold text-gray-600 uppercase">Current Price</th>
-                                <th className="text-right py-3 px-4 text-xs font-bold text-gray-600 uppercase">Invested</th>
-                                <th className="text-right py-3 px-4 text-xs font-bold text-gray-600 uppercase">Current Value</th>
-                                <th className="text-right py-3 px-4 text-xs font-bold text-gray-600 uppercase">P&L</th>
-                                <th className="text-center py-3 px-4 text-xs font-bold text-gray-600 uppercase">Return %</th>
+                            <tr className="border-b border-slate-200 bg-slate-50 text-left text-xs font-bold uppercase tracking-wide text-slate-600">
+                                <th className="px-4 py-3">Index</th>
+                                <th className="px-4 py-3 text-center">Qty</th>
+                                <th className="px-4 py-3 text-right">Avg Price</th>
+                                <th className="px-4 py-3 text-right">Current Price</th>
+                                <th className="px-4 py-3 text-right">Invested</th>
+                                <th className="px-4 py-3 text-right">Current Value</th>
+                                <th className="px-4 py-3 text-right">P&amp;L</th>
+                                <th className="px-4 py-3 text-center">Return %</th>
                             </tr>
                         </thead>
+
                         <tbody>
-                            {holdings.map((holding, index) => (
-                                <tr key={index} className="border-b border-gray-100 hover:bg-blue-50 transition">
-                                    <td className="py-4 px-4">
-                                        <div>
-                                            <p className="font-bold text-gray-900">{holding.indexName}</p>
-                                            <p className="text-xs text-gray-500">
-                                                {new Date(holding.purchaseDate).toLocaleDateString()}
-                                            </p>
-                                        </div>
-                                    </td>
-                                    <td className="py-4 px-4 text-center">
-                                        <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-semibold">
-                                            {holding.quantity}
-                                        </span>
-                                    </td>
-                                    <td className="py-4 px-4 text-right">
-                                        <p className="font-semibold text-gray-700">₹{holding.avgBuyPrice.toLocaleString()}</p>
-                                    </td>
-                                    <td className="py-4 px-4 text-right">
-                                        <p className="font-semibold text-blue-600">₹{holding.currentPrice.toLocaleString()}</p>
-                                    </td>
-                                    <td className="py-4 px-4 text-right">
-                                        <p className="font-bold text-gray-900">₹{holding.investedValue.toLocaleString()}</p>
-                                    </td>
-                                    <td className="py-4 px-4 text-right">
-                                        <p className="font-bold text-blue-600">₹{holding.currentValue.toLocaleString()}</p>
-                                    </td>
-                                    <td className="py-4 px-4 text-right">
-                                        <p className={`font-bold text-lg ${holding.pnl >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                            {holding.pnl >= 0 ? '+' : ''}₹{holding.pnl.toLocaleString()}
-                                        </p>
-                                    </td>
-                                    <td className="py-4 px-4 text-center">
-                                        <div className="flex items-center justify-center gap-1">
-                                            {holding.pnlPercent >= 0 ? (
-                                                <TrendingUp className="text-green-600" size={16} />
-                                            ) : (
-                                                <TrendingDown className="text-red-600" size={16} />
-                                            )}
-                                            <span className={`font-bold ${holding.pnlPercent >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                                {holding.pnlPercent >= 0 ? '+' : ''}{holding.pnlPercent.toFixed(2)}%
+                            {holdings.map((holding, index) => {
+                                const pnl = Number(holding.pnl || 0);
+                                const pnlPercent = Number(holding.pnlPercent || 0);
+                                const isProfit = pnl >= 0;
+
+                                return (
+                                    <tr
+                                        key={holding._id || holding.holdingId || index}
+                                        className="border-b border-slate-100 transition hover:bg-slate-50"
+                                    >
+                                        <td className="px-4 py-4">
+                                            <div>
+                                                <p className="font-semibold text-slate-900">
+                                                    {holding.indexName || holding.index?.name || '-'}
+                                                </p>
+                                                <p className="mt-1 text-xs text-slate-500">
+                                                    {holding.purchaseDate
+                                                        ? new Date(holding.purchaseDate).toLocaleDateString('en-IN', {
+                                                            dateStyle: 'medium',
+                                                        })
+                                                        : '-'}
+                                                </p>
+                                            </div>
+                                        </td>
+
+                                        <td className="px-4 py-4 text-center">
+                                            <span className="inline-flex rounded-full bg-blue-100 px-3 py-1 text-sm font-semibold text-blue-700">
+                                                {formatNumber(holding.quantity)}
                                             </span>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
+                                        </td>
+
+                                        <td className="px-4 py-4 text-right font-medium text-slate-700">
+                                            {formatCurrency(holding.avgBuyPrice)}
+                                        </td>
+
+                                        <td className="px-4 py-4 text-right font-medium text-blue-600">
+                                            {formatCurrency(holding.currentPrice)}
+                                        </td>
+
+                                        <td className="px-4 py-4 text-right font-semibold text-slate-900">
+                                            {formatCurrency(holding.investedValue)}
+                                        </td>
+
+                                        <td className="px-4 py-4 text-right font-semibold text-blue-600">
+                                            {formatCurrency(holding.currentValue)}
+                                        </td>
+
+                                        <td
+                                            className={`px-4 py-4 text-right text-base font-bold ${isProfit ? 'text-emerald-600' : 'text-red-600'
+                                                }`}
+                                        >
+                                            {isProfit ? '+' : ''}
+                                            {formatCurrency(pnl)}
+                                        </td>
+
+                                        <td className="px-4 py-4 text-center">
+                                            <div className="flex items-center justify-center gap-1.5">
+                                                {isProfit ? (
+                                                    <TrendingUp className="text-emerald-600" size={16} />
+                                                ) : (
+                                                    <TrendingDown className="text-red-600" size={16} />
+                                                )}
+                                                <span
+                                                    className={`font-bold ${isProfit ? 'text-emerald-600' : 'text-red-600'
+                                                        }`}
+                                                >
+                                                    {isProfit ? '+' : ''}
+                                                    {pnlPercent.toFixed(2)}%
+                                                </span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
                         </tbody>
                     </table>
                 ) : (
-                    <div className="text-center py-12">
-                        <Target className="mx-auto text-gray-400 mb-4" size={48} />
-                        <p className="text-gray-600">No holdings yet</p>
+                    <div className="py-14 text-center">
+                        <Target className="mx-auto mb-4 text-slate-300" size={46} />
+                        <p className="font-medium text-slate-600">No holdings yet</p>
                     </div>
                 )}
             </div>

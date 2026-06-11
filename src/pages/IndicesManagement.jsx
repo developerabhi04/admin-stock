@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
     fetchIndices,
@@ -7,6 +7,7 @@ import {
     deleteIndex,
     setFilters,
 } from '../store/slices/marketSlice';
+import { adminAPI } from '../services/api';
 import {
     BarChart3,
     Plus,
@@ -21,36 +22,112 @@ import {
     TrendingUp,
     TrendingDown,
     Globe,
+    Coins,
 } from 'lucide-react';
 import Loading from '../components/Loader';
 
+const initialFormData = {
+    name: '',
+    symbol: '',
+    category: '',
+    currentValue: '',
+    highValue: '',
+    lowValue: '',
+    previousClose: '',
+    logoUrl: '',
+    isFeatured: false,
+    isActive: true,
+    marketCap: '',
+    volume: '',
+    description: '',
+};
+
+const normalizeCategoryLabel = (item) => {
+    return item?.categoryName || item?.category?.name || '';
+};
+
+const normalizeCategorySlug = (item) => {
+    return item?.categorySlug || item?.category?.slug || '';
+};
+
+const getCategoryType = (item) => {
+    const label = normalizeCategoryLabel(item).toLowerCase();
+    const slug = normalizeCategorySlug(item).toLowerCase();
+
+    if (
+        label.includes('global') ||
+        slug.includes('global')
+    ) {
+        return 'Global';
+    }
+
+    if (
+        label.includes('crypto') ||
+        slug.includes('crypto')
+    ) {
+        return 'Crypto';
+    }
+
+    return 'Indian';
+};
+
 const IndicesManagement = () => {
     const dispatch = useDispatch();
-    const { indices, totalIndices, loading, filters } = useSelector((state) => state.market);
 
+    const { indices, totalIndices, loading, filters, actionLoading } = useSelector(
+        (state) => state.market
+    );
+
+    const [categories, setCategories] = useState([]);
     const [showModal, setShowModal] = useState(false);
     const [editingIndex, setEditingIndex] = useState(null);
     const [deleteModal, setDeleteModal] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [showFilters, setShowFilters] = useState(false);
+    const [formData, setFormData] = useState(initialFormData);
 
-    // Form state
-    const [formData, setFormData] = useState({
-        name: '',
-        symbol: '',
-        currentValue: '',
-        dayChange: '',
-        dayChangePercent: '',
-        category: 'indian',
-        featured: false,
-    });
+    const loadIndices = () => {
+        dispatch(fetchIndices({ page: 1, limit: 50, ...filters }));
+    };
+
+    const loadCategories = async () => {
+        try {
+            const response = await adminAPI.getAllCategories();
+            const raw = response?.data?.data;
+            const nextCategories = Array.isArray(raw?.categories)
+                ? raw.categories
+                : Array.isArray(raw)
+                    ? raw
+                    : [];
+            setCategories(nextCategories);
+        } catch (error) {
+            console.error('Failed to fetch categories:', error);
+            setCategories([]);
+        }
+    };
+
+    useEffect(() => {
+        loadCategories();
+    }, []);
 
     useEffect(() => {
         dispatch(fetchIndices({ page: 1, limit: 50, ...filters }));
     }, [dispatch, filters]);
 
+    const stats = useMemo(() => {
+        const list = Array.isArray(indices) ? indices : [];
+
+        return {
+            total: totalIndices || list.length || 0,
+            indian: list.filter((i) => getCategoryType(i) === 'Indian').length,
+            global: list.filter((i) => getCategoryType(i) === 'Global').length,
+            crypto: list.filter((i) => getCategoryType(i) === 'Crypto').length,
+            featured: list.filter((i) => i.isFeatured).length,
+        };
+    }, [indices, totalIndices]);
+
     const handleSearch = (e) => {
-        e.preventDefault();
+        e?.preventDefault?.();
         dispatch(setFilters({ search: searchTerm }));
     };
 
@@ -58,78 +135,89 @@ const IndicesManagement = () => {
         if (index) {
             setEditingIndex(index);
             setFormData({
-                name: index.name,
-                symbol: index.symbol,
-                currentValue: index.currentValue,
-                dayChange: index.dayChange || 0,
-                dayChangePercent: index.dayChangePercent || 0,
-                category: index.category || 'indian',
-                featured: index.featured || false,
+                name: index.name || '',
+                symbol: index.symbol || '',
+                category: index.categoryId || index.category?._id || '',
+                currentValue: index.currentValue ?? '',
+                highValue: index.highValue ?? '',
+                lowValue: index.lowValue ?? '',
+                previousClose: index.previousClose ?? '',
+                logoUrl: index.logoUrl || '',
+                isFeatured: !!index.isFeatured,
+                isActive: typeof index.isActive === 'boolean' ? index.isActive : true,
+                marketCap: index.marketCap ?? '',
+                volume: index.volume ?? '',
+                description: index.description || '',
             });
         } else {
             setEditingIndex(null);
-            setFormData({
-                name: '',
-                symbol: '',
-                currentValue: '',
-                dayChange: '',
-                dayChangePercent: '',
-                category: 'indian',
-                featured: false,
-            });
+            setFormData(initialFormData);
         }
+
         setShowModal(true);
     };
 
     const handleCloseModal = () => {
         setShowModal(false);
         setEditingIndex(null);
-        setFormData({
-            name: '',
-            symbol: '',
-            currentValue: '',
-            dayChange: '',
-            dayChangePercent: '',
-            category: 'indian',
-            featured: false,
-        });
+        setFormData(initialFormData);
+    };
+
+    const handleChange = (field, value) => {
+        setFormData((prev) => ({
+            ...prev,
+            [field]: value,
+        }));
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        if (!formData.name || !formData.symbol || !formData.currentValue) {
+        if (
+            !formData.name ||
+            !formData.symbol ||
+            !formData.category ||
+            formData.currentValue === '' ||
+            formData.highValue === '' ||
+            formData.lowValue === '' ||
+            formData.previousClose === ''
+        ) {
             alert('Please fill all required fields');
             return;
         }
+
+        const payload = {
+            name: formData.name.trim(),
+            symbol: formData.symbol.trim().toUpperCase(),
+            category: formData.category,
+            currentValue: Number(formData.currentValue),
+            highValue: Number(formData.highValue),
+            lowValue: Number(formData.lowValue),
+            previousClose: Number(formData.previousClose),
+            logoUrl: formData.logoUrl?.trim() || '',
+            isFeatured: !!formData.isFeatured,
+            isActive: !!formData.isActive,
+            marketCap: formData.marketCap === '' ? 0 : Number(formData.marketCap),
+            volume: formData.volume === '' ? 0 : Number(formData.volume),
+            description: formData.description?.trim() || '',
+        };
 
         try {
             if (editingIndex) {
                 await dispatch(
                     updateIndex({
                         indexId: editingIndex._id,
-                        data: {
-                            ...formData,
-                            currentValue: parseFloat(formData.currentValue),
-                            dayChange: parseFloat(formData.dayChange) || 0,
-                            dayChangePercent: parseFloat(formData.dayChangePercent) || 0,
-                        },
+                        data: payload,
                     })
                 ).unwrap();
                 alert('Index updated successfully!');
             } else {
-                await dispatch(
-                    createIndex({
-                        ...formData,
-                        currentValue: parseFloat(formData.currentValue),
-                        dayChange: parseFloat(formData.dayChange) || 0,
-                        dayChangePercent: parseFloat(formData.dayChangePercent) || 0,
-                    })
-                ).unwrap();
+                await dispatch(createIndex(payload)).unwrap();
                 alert('Index created successfully!');
             }
+
             handleCloseModal();
-            dispatch(fetchIndices({ page: 1, limit: 50, ...filters }));
+            loadIndices();
         } catch (error) {
             alert('Error: ' + error);
         }
@@ -140,7 +228,7 @@ const IndicesManagement = () => {
             await dispatch(deleteIndex(deleteModal)).unwrap();
             alert('Index deleted successfully!');
             setDeleteModal(null);
-            dispatch(fetchIndices({ page: 1, limit: 50, ...filters }));
+            loadIndices();
         } catch (error) {
             alert('Error: ' + error);
         }
@@ -151,39 +239,65 @@ const IndicesManagement = () => {
             await dispatch(
                 updateIndex({
                     indexId: index._id,
-                    data: { featured: !index.featured },
+                    data: {
+                        isFeatured: !index.isFeatured,
+                    },
                 })
             ).unwrap();
-            dispatch(fetchIndices({ page: 1, limit: 50, ...filters }));
+
+            loadIndices();
         } catch (error) {
             alert('Error: ' + error);
         }
     };
 
-    const getCategoryIcon = (category) => {
-        switch (category) {
-            case 'indian':
+    const getCategoryIcon = (item) => {
+        const type = getCategoryType(item);
+
+        switch (type) {
+            case 'Indian':
                 return <BarChart3 className="text-white" size={24} />;
-            case 'global':
+            case 'Global':
                 return <Globe className="text-white" size={24} />;
-            case 'crypto':
-                return <TrendingUp className="text-white" size={24} />;
+            case 'Crypto':
+                return <Coins className="text-white" size={24} />;
             default:
                 return <BarChart3 className="text-white" size={24} />;
         }
     };
 
-    const getCategoryColor = (category) => {
-        switch (category) {
-            case 'indian':
+    const getCategoryColor = (item) => {
+        const type = getCategoryType(item);
+
+        switch (type) {
+            case 'Indian':
                 return 'from-blue-400 to-blue-600';
-            case 'global':
+            case 'Global':
                 return 'from-green-400 to-green-600';
-            case 'crypto':
+            case 'Crypto':
                 return 'from-orange-400 to-orange-600';
             default:
                 return 'from-gray-400 to-gray-600';
         }
+    };
+
+    const getCategoryBadge = (item) => {
+        const type = getCategoryType(item);
+
+        switch (type) {
+            case 'Indian':
+                return 'bg-blue-100 text-blue-700';
+            case 'Global':
+                return 'bg-purple-100 text-purple-700';
+            case 'Crypto':
+                return 'bg-orange-100 text-orange-700';
+            default:
+                return 'bg-gray-100 text-gray-700';
+        }
+    };
+
+    const filterByCategorySlug = async (slugValue) => {
+        dispatch(setFilters({ category: slugValue }));
     };
 
     if (loading && indices.length === 0) {
@@ -192,7 +306,6 @@ const IndicesManagement = () => {
 
     return (
         <div className="space-y-6">
-            {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-4xl font-bold text-gray-900">Indices Management</h1>
@@ -200,14 +313,16 @@ const IndicesManagement = () => {
                         Create and manage market indices displayed in the mobile app
                     </p>
                 </div>
+
                 <div className="flex items-center space-x-3">
                     <button
-                        onClick={() => dispatch(fetchIndices({ page: 1, limit: 50, ...filters }))}
+                        onClick={loadIndices}
                         className="bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg transition flex items-center space-x-2"
                     >
                         <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
                         <span>Refresh</span>
                     </button>
+
                     <button
                         onClick={() => handleOpenModal()}
                         className="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg transition flex items-center space-x-2"
@@ -218,13 +333,12 @@ const IndicesManagement = () => {
                 </div>
             </div>
 
-            {/* Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
                 <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-lg p-6 text-white">
                     <div className="flex items-center justify-between">
                         <div>
                             <p className="text-green-100 text-sm mb-1">Total Indices</p>
-                            <p className="text-4xl font-bold">{totalIndices || 0}</p>
+                            <p className="text-4xl font-bold">{stats.total}</p>
                         </div>
                         <BarChart3 size={32} className="opacity-80" />
                     </div>
@@ -234,9 +348,7 @@ const IndicesManagement = () => {
                     <div className="flex items-center justify-between">
                         <div>
                             <p className="text-blue-100 text-sm mb-1">Indian</p>
-                            <p className="text-4xl font-bold">
-                                {indices.filter((i) => i.category === 'indian').length}
-                            </p>
+                            <p className="text-4xl font-bold">{stats.indian}</p>
                         </div>
                         <BarChart3 size={32} className="opacity-80" />
                     </div>
@@ -246,11 +358,19 @@ const IndicesManagement = () => {
                     <div className="flex items-center justify-between">
                         <div>
                             <p className="text-purple-100 text-sm mb-1">Global</p>
-                            <p className="text-4xl font-bold">
-                                {indices.filter((i) => i.category === 'global').length}
-                            </p>
+                            <p className="text-4xl font-bold">{stats.global}</p>
                         </div>
                         <Globe size={32} className="opacity-80" />
+                    </div>
+                </div>
+
+                <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl shadow-lg p-6 text-white">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-orange-100 text-sm mb-1">Crypto</p>
+                            <p className="text-4xl font-bold">{stats.crypto}</p>
+                        </div>
+                        <Coins size={32} className="opacity-80" />
                     </div>
                 </div>
 
@@ -258,16 +378,13 @@ const IndicesManagement = () => {
                     <div className="flex items-center justify-between">
                         <div>
                             <p className="text-yellow-100 text-sm mb-1">Featured</p>
-                            <p className="text-4xl font-bold">
-                                {indices.filter((i) => i.featured).length}
-                            </p>
+                            <p className="text-4xl font-bold">{stats.featured}</p>
                         </div>
                         <Star size={32} className="opacity-80" />
                     </div>
                 </div>
             </div>
 
-            {/* Search and Filters */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
                 <div className="flex flex-col md:flex-row md:items-center space-y-4 md:space-y-0 md:space-x-4">
                     <form onSubmit={handleSearch} className="flex-1">
@@ -285,14 +402,16 @@ const IndicesManagement = () => {
                             />
                         </div>
                     </form>
+
                     <button
-                        type="submit"
+                        type="button"
                         onClick={handleSearch}
                         className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-xl font-medium transition flex items-center justify-center space-x-2"
                     >
                         <Search size={18} />
                         <span>Search</span>
                     </button>
+
                     <button
                         onClick={() => setShowFilters(!showFilters)}
                         className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-3 rounded-xl font-medium transition flex items-center justify-center space-x-2"
@@ -304,7 +423,7 @@ const IndicesManagement = () => {
 
                 {showFilters && (
                     <div className="mt-4 pt-4 border-t border-gray-200">
-                        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                        <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
                             <button
                                 onClick={() => dispatch(setFilters({ category: '' }))}
                                 className={`px-4 py-2 rounded-lg text-sm font-medium transition ${filters.category === ''
@@ -314,24 +433,20 @@ const IndicesManagement = () => {
                             >
                                 All Categories
                             </button>
-                            <button
-                                onClick={() => dispatch(setFilters({ category: 'indian' }))}
-                                className={`px-4 py-2 rounded-lg text-sm font-medium transition ${filters.category === 'indian'
-                                    ? 'bg-blue-500 text-white'
-                                    : 'bg-gray-50 hover:bg-gray-100 text-gray-700'
-                                    }`}
-                            >
-                                Indian
-                            </button>
-                            <button
-                                onClick={() => dispatch(setFilters({ category: 'global' }))}
-                                className={`px-4 py-2 rounded-lg text-sm font-medium transition ${filters.category === 'global'
-                                    ? 'bg-purple-500 text-white'
-                                    : 'bg-gray-50 hover:bg-gray-100 text-gray-700'
-                                    }`}
-                            >
-                                Global
-                            </button>
+
+                            {categories.map((cat) => (
+                                <button
+                                    key={cat._id}
+                                    onClick={() => filterByCategorySlug(cat.slug || cat.name)}
+                                    className={`px-4 py-2 rounded-lg text-sm font-medium transition ${filters.category === (cat.slug || cat.name)
+                                        ? 'bg-blue-500 text-white'
+                                        : 'bg-gray-50 hover:bg-gray-100 text-gray-700'
+                                        }`}
+                                >
+                                    {cat.name}
+                                </button>
+                            ))}
+
                             <button
                                 onClick={() => dispatch(setFilters({ featured: 'true' }))}
                                 className={`px-4 py-2 rounded-lg text-sm font-medium transition ${filters.featured === 'true'
@@ -341,8 +456,12 @@ const IndicesManagement = () => {
                             >
                                 Featured
                             </button>
+
                             <button
-                                onClick={() => dispatch(setFilters({ category: '', featured: '', search: '' }))}
+                                onClick={() => {
+                                    setSearchTerm('');
+                                    dispatch(setFilters({ category: '', featured: '', search: '' }));
+                                }}
                                 className="bg-red-50 hover:bg-red-100 text-red-600 px-4 py-2 rounded-lg text-sm font-medium transition"
                             >
                                 Clear
@@ -352,7 +471,6 @@ const IndicesManagement = () => {
                 )}
             </div>
 
-            {/* Indices Grid */}
             {indices.length === 0 ? (
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-16 text-center">
                     <div className="bg-gray-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -372,105 +490,123 @@ const IndicesManagement = () => {
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {indices.map((index) => (
-                        <div
-                            key={index._id}
-                            className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 hover:shadow-lg transition"
-                        >
-                            {/* Header */}
-                            <div className="flex items-start justify-between mb-4">
-                                <div className="flex items-center space-x-3">
-                                    <div
-                                        className={`w-12 h-12 bg-gradient-to-br ${getCategoryColor(
-                                            index.category
-                                        )} rounded-xl flex items-center justify-center`}
-                                    >
-                                        {getCategoryIcon(index.category)}
+                    {indices.map((index) => {
+                        const categoryLabel = normalizeCategoryLabel(index) || getCategoryType(index);
+
+                        return (
+                            <div
+                                key={index._id}
+                                className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 hover:shadow-lg transition"
+                            >
+                                <div className="flex items-start justify-between mb-4">
+                                    <div className="flex items-center space-x-3">
+                                        {index.logoUrl ? (
+                                            <div className="w-12 h-12 rounded-xl overflow-hidden border border-gray-200 bg-white flex items-center justify-center">
+                                                <img
+                                                    src={index.logoUrl}
+                                                    alt={index.name}
+                                                    className="w-full h-full object-contain"
+                                                />
+                                            </div>
+                                        ) : (
+                                            <div
+                                                className={`w-12 h-12 bg-gradient-to-br ${getCategoryColor(
+                                                    index
+                                                )} rounded-xl flex items-center justify-center`}
+                                            >
+                                                {getCategoryIcon(index)}
+                                            </div>
+                                        )}
+
+                                        <div>
+                                            <h3 className="font-bold text-gray-900">{index.name}</h3>
+                                            <p className="text-sm text-gray-500">{index.symbol}</p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <h3 className="font-bold text-gray-900">{index.name}</h3>
-                                        <p className="text-sm text-gray-500">{index.symbol}</p>
+
+                                    <button
+                                        onClick={() => handleToggleFeatured(index)}
+                                        className={`p-2 rounded-lg transition ${index.isFeatured
+                                            ? 'bg-yellow-100 text-yellow-600'
+                                            : 'bg-gray-100 text-gray-400 hover:bg-yellow-100 hover:text-yellow-600'
+                                            }`}
+                                    >
+                                        <Star size={18} className={index.isFeatured ? 'fill-current' : ''} />
+                                    </button>
+                                </div>
+
+                                <div className="mb-4">
+                                    <p className="text-3xl font-bold text-gray-900">
+                                        {Number(index.currentValue || 0).toLocaleString()}
+                                    </p>
+
+                                    <div className="flex items-center space-x-2 mt-1">
+                                        {Number(index.changePercent) >= 0 ? (
+                                            <span className="text-green-600 text-sm font-semibold flex items-center">
+                                                <TrendingUp size={14} className="mr-1" />
+                                                +{Number(index.changePercent || 0).toFixed(2)}%
+                                            </span>
+                                        ) : (
+                                            <span className="text-red-600 text-sm font-semibold flex items-center">
+                                                <TrendingDown size={14} className="mr-1" />
+                                                {Number(index.changePercent || 0).toFixed(2)}%
+                                            </span>
+                                        )}
+
+                                        <span className="text-gray-500 text-sm">
+                                            {Number(index.change) >= 0 ? '+' : ''}
+                                            {Number(index.change || 0).toFixed(2)}
+                                        </span>
                                     </div>
                                 </div>
-                                <button
-                                    onClick={() => handleToggleFeatured(index)}
-                                    className={`p-2 rounded-lg transition ${index.featured
-                                        ? 'bg-yellow-100 text-yellow-600'
-                                        : 'bg-gray-100 text-gray-400 hover:bg-yellow-100 hover:text-yellow-600'
-                                        }`}
-                                >
-                                    <Star size={18} className={index.featured ? 'fill-current' : ''} />
-                                </button>
-                            </div>
 
-                            {/* Value */}
-                            <div className="mb-4">
-                                <p className="text-3xl font-bold text-gray-900">
-                                    {index.currentValue?.toLocaleString()}
-                                </p>
-                                <div className="flex items-center space-x-2 mt-1">
-                                    {index.dayChangePercent >= 0 ? (
-                                        <span className="text-green-600 text-sm font-semibold flex items-center">
-                                            <TrendingUp size={14} className="mr-1" />
-                                            +{index.dayChangePercent}%
-                                        </span>
-                                    ) : (
-                                        <span className="text-red-600 text-sm font-semibold flex items-center">
-                                            <TrendingDown size={14} className="mr-1" />
-                                            {index.dayChangePercent}%
+                                <div className="mb-4 flex items-center justify-between">
+                                    <span
+                                        className={`inline-block px-3 py-1 text-xs font-semibold rounded-full capitalize ${getCategoryBadge(
+                                            index
+                                        )}`}
+                                    >
+                                        {categoryLabel}
+                                    </span>
+
+                                    {index.isFeatured && (
+                                        <span className="inline-block px-3 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-700">
+                                            Top Index
                                         </span>
                                     )}
-                                    <span className="text-gray-500 text-sm">
-                                        {index.dayChange >= 0 ? '+' : ''}{index.dayChange?.toFixed(2)}
-                                    </span>
+                                </div>
+
+                                <div className="flex items-center space-x-2">
+                                    <button
+                                        onClick={() => handleOpenModal(index)}
+                                        className="flex-1 bg-green-50 hover:bg-green-100 text-green-600 py-2 rounded-lg font-medium transition flex items-center justify-center space-x-2"
+                                    >
+                                        <Edit2 size={16} />
+                                        <span>Edit</span>
+                                    </button>
+
+                                    <button
+                                        onClick={() => setDeleteModal(index._id)}
+                                        className="flex-1 bg-red-50 hover:bg-red-100 text-red-600 py-2 rounded-lg font-medium transition flex items-center justify-center space-x-2"
+                                    >
+                                        <Trash2 size={16} />
+                                        <span>Delete</span>
+                                    </button>
                                 </div>
                             </div>
-
-                            {/* Category */}
-                            <div className="mb-4">
-                                <span
-                                    className={`inline-block px-3 py-1 text-xs font-semibold rounded-full capitalize ${index.category === 'indian'
-                                        ? 'bg-blue-100 text-blue-700'
-                                        : index.category === 'global'
-                                            ? 'bg-purple-100 text-purple-700'
-                                            : 'bg-orange-100 text-orange-700'
-                                        }`}
-                                >
-                                    {index.category}
-                                </span>
-                            </div>
-
-                            {/* Actions */}
-                            <div className="flex items-center space-x-2">
-                                <button
-                                    onClick={() => handleOpenModal(index)}
-                                    className="flex-1 bg-green-50 hover:bg-green-100 text-green-600 py-2 rounded-lg font-medium transition flex items-center justify-center space-x-2"
-                                >
-                                    <Edit2 size={16} />
-                                    <span>Edit</span>
-                                </button>
-                                <button
-                                    onClick={() => setDeleteModal(index._id)}
-                                    className="flex-1 bg-red-50 hover:bg-red-100 text-red-600 py-2 rounded-lg font-medium transition flex items-center justify-center space-x-2"
-                                >
-                                    <Trash2 size={16} />
-                                    <span>Delete</span>
-                                </button>
-                            </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             )}
 
-            {/* Create/Edit Modal */}
             {showModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-                        {/* Modal Header */}
                         <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
                             <h3 className="text-2xl font-bold text-gray-900">
                                 {editingIndex ? 'Edit Index' : 'Add New Index'}
                             </h3>
+
                             <button
                                 onClick={handleCloseModal}
                                 className="p-2 hover:bg-gray-100 rounded-lg transition"
@@ -479,9 +615,7 @@ const IndicesManagement = () => {
                             </button>
                         </div>
 
-                        {/* Modal Body */}
                         <form onSubmit={handleSubmit} className="p-6 space-y-6">
-                            {/* Name */}
                             <div>
                                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                                     Index Name <span className="text-red-500">*</span>
@@ -489,14 +623,13 @@ const IndicesManagement = () => {
                                 <input
                                     type="text"
                                     value={formData.name}
-                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                    onChange={(e) => handleChange('name', e.target.value)}
                                     className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
                                     placeholder="e.g., NIFTY 50"
                                     required
                                 />
                             </div>
 
-                            {/* Symbol */}
                             <div>
                                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                                     Index Symbol <span className="text-red-500">*</span>
@@ -504,16 +637,32 @@ const IndicesManagement = () => {
                                 <input
                                     type="text"
                                     value={formData.symbol}
-                                    onChange={(e) =>
-                                        setFormData({ ...formData, symbol: e.target.value.toUpperCase() })
-                                    }
+                                    onChange={(e) => handleChange('symbol', e.target.value.toUpperCase())}
                                     className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
                                     placeholder="e.g., NIFTY"
                                     required
                                 />
                             </div>
 
-                            {/* Current Value */}
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                    Category <span className="text-red-500">*</span>
+                                </label>
+                                <select
+                                    value={formData.category}
+                                    onChange={(e) => handleChange('category', e.target.value)}
+                                    className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
+                                    required
+                                >
+                                    <option value="">Select Category</option>
+                                    {categories.map((cat) => (
+                                        <option key={cat._id} value={cat._id}>
+                                            {cat.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
                             <div>
                                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                                     Current Value <span className="text-red-500">*</span>
@@ -522,87 +671,180 @@ const IndicesManagement = () => {
                                     type="number"
                                     step="0.01"
                                     value={formData.currentValue}
-                                    onChange={(e) => setFormData({ ...formData, currentValue: e.target.value })}
+                                    onChange={(e) => handleChange('currentValue', e.target.value)}
                                     className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
-                                    placeholder="e.g., 19435.30"
+                                    placeholder="19435.30"
                                     required
                                 />
                             </div>
 
-                            {/* Day Change & Percentage */}
+                            <div className="grid grid-cols-3 gap-4">
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        High Value <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        value={formData.highValue}
+                                        onChange={(e) => handleChange('highValue', e.target.value)}
+                                        className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
+                                        placeholder="19500.00"
+                                        required
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        Low Value <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        value={formData.lowValue}
+                                        onChange={(e) => handleChange('lowValue', e.target.value)}
+                                        className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
+                                        placeholder="19350.00"
+                                        required
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        Previous Close <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        value={formData.previousClose}
+                                        onChange={(e) => handleChange('previousClose', e.target.value)}
+                                        className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
+                                        placeholder="19390.00"
+                                        required
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                    Logo URL / Image Path
+                                </label>
+                                <input
+                                    type="text"
+                                    value={formData.logoUrl}
+                                    onChange={(e) => handleChange('logoUrl', e.target.value)}
+                                    className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
+                                    placeholder="https://example.com/logo.png or /uploads/indices/nifty50.png"
+                                />
+                                {formData.logoUrl ? (
+                                    <div className="mt-3 w-16 h-16 rounded-xl border border-gray-200 bg-white overflow-hidden flex items-center justify-center">
+                                        <img
+                                            src={formData.logoUrl}
+                                            alt="Logo preview"
+                                            className="w-full h-full object-contain"
+                                            onError={(e) => {
+                                                e.currentTarget.style.display = 'none';
+                                            }}
+                                        />
+                                    </div>
+                                ) : null}
+                            </div>
+
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                        Day Change
+                                        Market Cap
                                     </label>
                                     <input
                                         type="number"
-                                        step="0.01"
-                                        value={formData.dayChange}
-                                        onChange={(e) => setFormData({ ...formData, dayChange: e.target.value })}
+                                        value={formData.marketCap}
+                                        onChange={(e) => handleChange('marketCap', e.target.value)}
                                         className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
-                                        placeholder="e.g., 45.30"
+                                        placeholder="Optional"
                                     />
                                 </div>
+
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                        Day Change (%)
+                                        Volume
                                     </label>
                                     <input
                                         type="number"
-                                        step="0.01"
-                                        value={formData.dayChangePercent}
-                                        onChange={(e) =>
-                                            setFormData({ ...formData, dayChangePercent: e.target.value })
-                                        }
+                                        value={formData.volume}
+                                        onChange={(e) => handleChange('volume', e.target.value)}
                                         className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
-                                        placeholder="e.g., 1.24"
+                                        placeholder="Optional"
                                     />
                                 </div>
                             </div>
 
-                            {/* Category */}
                             <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">Category</label>
-                                <select
-                                    value={formData.category}
-                                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                                    className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
-                                >
-                                    <option value="indian">Indian Indices</option>
-                                    <option value="global">Global Indices</option>
-                                    <option value="crypto">Crypto</option>
-                                </select>
-                            </div>
-
-                            {/* Featured Toggle */}
-                            <div className="flex items-center justify-between p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
-                                <div className="flex items-center space-x-3">
-                                    <Star className="text-yellow-600" size={24} />
-                                    <div>
-                                        <p className="font-semibold text-gray-900">Featured Index</p>
-                                        <p className="text-sm text-gray-600">Display on home screen</p>
-                                    </div>
-                                </div>
-                                <label className="relative inline-flex items-center cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        checked={formData.featured}
-                                        onChange={(e) => setFormData({ ...formData, featured: e.target.checked })}
-                                        className="sr-only peer"
-                                    />
-                                    <div className="w-14 h-7 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-yellow-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-yellow-500"></div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                    Description
                                 </label>
+                                <textarea
+                                    rows="3"
+                                    value={formData.description}
+                                    onChange={(e) => handleChange('description', e.target.value)}
+                                    className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
+                                    placeholder="Short description"
+                                />
                             </div>
 
-                            {/* Buttons */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="flex items-center justify-between p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
+                                    <div className="flex items-center space-x-3">
+                                        <Star className="text-yellow-600" size={24} />
+                                        <div>
+                                            <p className="font-semibold text-gray-900">Featured Index</p>
+                                            <p className="text-sm text-gray-600">Show in Top Indices</p>
+                                        </div>
+                                    </div>
+
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.isFeatured}
+                                            onChange={(e) => handleChange('isFeatured', e.target.checked)}
+                                            className="sr-only peer"
+                                        />
+                                        <div className="w-14 h-7 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-yellow-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-yellow-500"></div>
+                                    </label>
+                                </div>
+
+                                <div className="flex items-center justify-between p-4 bg-blue-50 border border-blue-200 rounded-xl">
+                                    <div>
+                                        <p className="font-semibold text-gray-900">Active Status</p>
+                                        <p className="text-sm text-gray-600">Visible in app APIs</p>
+                                    </div>
+
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.isActive}
+                                            onChange={(e) => handleChange('isActive', e.target.checked)}
+                                            className="sr-only peer"
+                                        />
+                                        <div className="w-14 h-7 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-blue-500"></div>
+                                    </label>
+                                </div>
+                            </div>
+
                             <div className="flex space-x-3 pt-4">
                                 <button
                                     type="submit"
-                                    className="flex-1 bg-green-500 hover:bg-green-600 text-white py-3 rounded-xl font-semibold transition"
+                                    disabled={actionLoading}
+                                    className="flex-1 bg-green-500 hover:bg-green-600 disabled:opacity-50 text-white py-3 rounded-xl font-semibold transition"
                                 >
-                                    {editingIndex ? 'Update Index' : 'Create Index'}
+                                    {actionLoading
+                                        ? editingIndex
+                                            ? 'Updating...'
+                                            : 'Creating...'
+                                        : editingIndex
+                                            ? 'Update Index'
+                                            : 'Create Index'}
                                 </button>
+
                                 <button
                                     type="button"
                                     onClick={handleCloseModal}
@@ -616,17 +858,22 @@ const IndicesManagement = () => {
                 </div>
             )}
 
-            {/* Delete Confirmation Modal */}
             {deleteModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-2xl w-full max-w-md p-6">
                         <div className="bg-red-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                             <AlertCircle className="text-red-600" size={32} />
                         </div>
-                        <h3 className="text-2xl font-bold text-gray-900 text-center mb-2">Delete Index?</h3>
+
+                        <h3 className="text-2xl font-bold text-gray-900 text-center mb-2">
+                            Delete Index?
+                        </h3>
+
                         <p className="text-gray-600 text-center mb-6">
-                            This action cannot be undone. The index will be permanently removed from the system.
+                            This action cannot be undone. The index will be permanently removed from
+                            the system.
                         </p>
+
                         <div className="flex space-x-3">
                             <button
                                 onClick={handleDelete}
@@ -634,6 +881,7 @@ const IndicesManagement = () => {
                             >
                                 Delete
                             </button>
+
                             <button
                                 onClick={() => setDeleteModal(null)}
                                 className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 py-3 rounded-xl font-semibold transition"

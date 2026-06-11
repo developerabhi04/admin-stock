@@ -1,123 +1,125 @@
 import { useState } from 'react';
 import { Wallet, Plus, Minus, X, Loader } from 'lucide-react';
 
-const UpdateBalanceModal = ({ userId, onClose, dispatch, updateUserBalance, fetchUserDetails }) => {
+const UpdateBalanceModal = ({
+    userId,
+    onClose,
+    dispatch,
+    updateUserBalance,
+    fetchUserDetails,
+}) => {
     const [balanceAction, setBalanceAction] = useState('add');
     const [amount, setAmount] = useState('');
     const [reason, setReason] = useState('');
     const [loading, setLoading] = useState(false);
 
     const handleBalanceUpdate = async () => {
-        if (!amount || !reason) {
+        if (!amount || !reason.trim()) {
             alert('Please fill all fields');
             return;
         }
 
         setLoading(true);
         try {
-            await dispatch(updateUserBalance({
-                userId,
-                amount: parseFloat(amount),
-                type: balanceAction,
-                reason
-            })).unwrap();
+            await dispatch(
+                updateUserBalance({
+                    userId,
+                    amount: Number(amount),
+                    type: balanceAction,
+                    reason: reason.trim(),
+                })
+            ).unwrap();
 
-            alert('✅ Balance updated successfully!');
             onClose();
             dispatch(fetchUserDetails(userId));
         } catch (error) {
-            alert('Error: ' + error);
+            alert(typeof error === 'string' ? error : error?.message || 'Failed to update balance');
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md animate-scale-in">
-                <div className="flex items-center justify-between p-6 border-b border-gray-200">
-                    <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                        <Wallet className="text-blue-600" size={24} />
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
+            <div className="w-full max-w-md rounded-3xl bg-white shadow-2xl">
+                <div className="flex items-center justify-between border-b border-slate-200 p-6">
+                    <h3 className="flex items-center gap-2 text-xl font-bold text-slate-900">
+                        <Wallet className="text-blue-600" size={22} />
                         Update Balance
                     </h3>
-                    <button
-                        onClick={onClose}
-                        className="text-gray-400 hover:text-gray-600 transition"
-                    >
-                        <X size={24} />
+                    <button onClick={onClose} className="text-slate-400 transition hover:text-slate-600">
+                        <X size={22} />
                     </button>
                 </div>
 
-                <div className="p-6 space-y-4">
-                    {/* Action Type */}
+                <div className="space-y-5 p-6">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-3">Action Type</label>
+                        <label className="mb-3 block text-sm font-medium text-slate-700">Action Type</label>
                         <div className="grid grid-cols-2 gap-3">
                             <button
                                 onClick={() => setBalanceAction('add')}
-                                className={`flex items-center justify-center gap-2 py-4 rounded-xl border-2 transition ${balanceAction === 'add'
-                                        ? 'border-green-500 bg-green-50 text-green-700 shadow-lg'
-                                        : 'border-gray-200 text-gray-600 hover:border-green-300'
+                                className={`flex min-h-[52px] items-center justify-center gap-2 rounded-2xl border-2 px-4 py-3 transition ${balanceAction === 'add'
+                                        ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                                        : 'border-slate-200 text-slate-600 hover:border-emerald-300'
                                     }`}
                             >
-                                <Plus size={20} />
+                                <Plus size={18} />
                                 <span className="font-semibold">Add Money</span>
                             </button>
+
                             <button
                                 onClick={() => setBalanceAction('deduct')}
-                                className={`flex items-center justify-center gap-2 py-4 rounded-xl border-2 transition ${balanceAction === 'deduct'
-                                        ? 'border-red-500 bg-red-50 text-red-700 shadow-lg'
-                                        : 'border-gray-200 text-gray-600 hover:border-red-300'
+                                className={`flex min-h-[52px] items-center justify-center gap-2 rounded-2xl border-2 px-4 py-3 transition ${balanceAction === 'deduct'
+                                        ? 'border-red-500 bg-red-50 text-red-700'
+                                        : 'border-slate-200 text-slate-600 hover:border-red-300'
                                     }`}
                             >
-                                <Minus size={20} />
+                                <Minus size={18} />
                                 <span className="font-semibold">Deduct Money</span>
                             </button>
                         </div>
                     </div>
 
-                    {/* Amount */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Amount (₹)</label>
+                        <label className="mb-2 block text-sm font-medium text-slate-700">Amount (₹)</label>
                         <input
                             type="number"
-                            value={amount}
-                            onChange={(e) => setAmount(e.target.value)}
-                            className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition"
-                            placeholder="Enter amount"
                             min="0"
                             step="0.01"
+                            value={amount}
+                            onChange={(e) => setAmount(e.target.value)}
+                            placeholder="Enter amount"
+                            className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
                         />
                     </div>
 
-                    {/* Reason */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Reason</label>
+                        <label className="mb-2 block text-sm font-medium text-slate-700">Reason</label>
                         <textarea
+                            rows="3"
                             value={reason}
                             onChange={(e) => setReason(e.target.value)}
-                            className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition resize-none"
-                            rows="3"
-                            placeholder="Enter reason for adjustment..."
+                            placeholder="Enter reason for adjustment"
+                            className="w-full resize-none rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
                         />
                     </div>
                 </div>
 
-                {/* Footer */}
-                <div className="flex gap-3 p-6 bg-gray-50 rounded-b-2xl">
+                <div className="flex gap-3 rounded-b-3xl bg-slate-50 p-6">
                     <button
                         onClick={onClose}
-                        className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 py-3 rounded-xl transition font-semibold"
+                        className="flex-1 rounded-2xl bg-slate-200 py-3 font-semibold text-slate-800 transition hover:bg-slate-300"
                     >
                         Cancel
                     </button>
+
                     <button
                         onClick={handleBalanceUpdate}
-                        disabled={loading || !amount || !reason}
-                        className={`flex-1 ${balanceAction === 'add'
-                                ? 'bg-green-600 hover:bg-green-700'
+                        disabled={loading || !amount || !reason.trim()}
+                        className={`flex flex-1 items-center justify-center gap-2 rounded-2xl py-3 font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-50 ${balanceAction === 'add'
+                                ? 'bg-emerald-600 hover:bg-emerald-700'
                                 : 'bg-red-600 hover:bg-red-700'
-                            } text-white py-3 rounded-xl transition disabled:opacity-50 disabled:cursor-not-allowed font-semibold flex items-center justify-center gap-2`}
+                            }`}
                     >
                         {loading ? (
                             <>

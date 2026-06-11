@@ -12,11 +12,10 @@ import Users from './pages/user/User';
 import MarketOverview from './pages/MarketOverview';
 import StocksManagement from './pages/StocksManagement';
 import IndicesManagement from './pages/IndicesManagement';
-import BannerManagement from './pages/BannerManagement';
-import PushNotifications from './pages/PushNotifications';
+import BannerManagement from './pages/banner/BannerManagement';
+import PushNotifications from './pages/notification/PushNotifications';
 import IndexCategories from './pages/IndexCategories';
-import KYCManagement from './pages/KYCManagement';
-import Reports from './pages/Reports';
+import Reports from './pages/reports/Reports';
 import AdminManagement from './pages/AdminManagement';
 
 
@@ -133,16 +132,6 @@ function App() {
             element={
               <ProtectedRoute>
                 <UserDetails />
-              </ProtectedRoute>
-            }
-          />
-
-          {/* ✅ KYC Management - Super Admin or Allowed Admins */}
-          <Route
-            path="kyc"
-            element={
-              <ProtectedRoute>
-                <KYCManagement />
               </ProtectedRoute>
             }
           />

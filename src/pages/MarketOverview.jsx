@@ -111,7 +111,7 @@ const MarketOverview = () => {
             </div>
 
             {/* Quick Actions */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
 
 
                 {/* Indices Management Card */}
@@ -139,45 +139,45 @@ const MarketOverview = () => {
             </div>
 
             {/* Recent Activity Preview */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-               
+            {/* <div className="grid grid-cols-1 md:grid-cols-q gap-2"> */}
 
-                {/* Recent Indices */}
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-                    <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-xl font-bold text-gray-900">Recent Indices</h3>
-                        <button
-                            onClick={() => navigate('/dashboard/market/indices')}
-                            className="text-green-600 hover:text-green-700 text-sm font-medium"
+
+            {/* Recent Indices */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+                <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-xl font-bold text-gray-900">Recent Indices</h3>
+                    <button
+                        onClick={() => navigate('/dashboard/market/indices')}
+                        className="text-green-600 hover:text-green-700 text-sm font-medium"
+                    >
+                        View All →
+                    </button>
+                </div>
+                <div className="space-y-3">
+                    {indices.slice(0, 5).map((index) => (
+                        <div
+                            key={index._id}
+                            className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition"
                         >
-                            View All →
-                        </button>
-                    </div>
-                    <div className="space-y-3">
-                        {indices.slice(0, 5).map((index) => (
-                            <div
-                                key={index._id}
-                                className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition"
-                            >
-                                <div>
-                                    <p className="font-semibold text-gray-900">{index.name}</p>
-                                    <p className="text-xs text-gray-500">{index.symbol}</p>
-                                </div>
-                                <div className="text-right">
-                                    <p className="font-bold text-gray-900">{index.currentValue?.toLocaleString()}</p>
-                                    {index.featured && (
-                                        <span className="inline-flex items-center text-xs text-yellow-600">
-                                            <Star size={12} className="mr-1 fill-current" />
-                                            Featured
-                                        </span>
-                                    )}
-                                </div>
+                            <div>
+                                <p className="font-semibold text-gray-900">{index.name}</p>
+                                <p className="text-xs text-gray-500">{index.symbol}</p>
                             </div>
-                        ))}
-                    </div>
+                            <div className="text-right">
+                                <p className="font-bold text-gray-900">{index.currentValue?.toLocaleString()}</p>
+                                {index.featured && (
+                                    <span className="inline-flex items-center text-xs text-yellow-600">
+                                        <Star size={12} className="mr-1 fill-current" />
+                                        Featured
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                    ))}
                 </div>
             </div>
         </div>
+        // </div>
     );
 };
 

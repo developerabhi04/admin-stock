@@ -4,8 +4,8 @@ import { CreditCard, TrendingDown, Clock, DollarSign } from 'lucide-react';
 import { useSelector, useDispatch } from 'react-redux';
 import { fetchPendingPayments } from '../store/slices/paymentsSlice';
 import { fetchPendingWithdrawals } from '../store/slices/withdrawalsSlice';
-import PendingPayments from './PendingPayments';
-import PendingWithdrawals from './PendingWithdrawals';
+import PendingPayments from './finance/PendingPayments';
+import PendingWithdrawals from './finance/PendingWithdrawals';
 import Loading from '../components/Loader';
 
 const PaymentManager = ({ defaultTab = 'payments' }) => {

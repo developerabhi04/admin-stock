@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import {
   approvePayment,
   rejectPayment
-} from '../store/slices/paymentsSlice';
+} from '../../store/slices/paymentsSlice';
 import { Check, X, Clock, Phone, User, Wallet, Calendar, Hash, Building2, Eye, XCircle } from 'lucide-react';
 
 const PendingPayments = () => {

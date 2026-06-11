@@ -12,7 +12,6 @@ import UserHoldings from '../../components/Users/UserHoldings';
 import UserOrders from '../../components/Users/UserOrders';
 import UserTransactions from '../../components/Users/UserTransactions';
 import UserBankDetails from '../../components/Users/UserBankDetails';
-import UserKYC from '../../components/Users/UserKYC';
 import UpdateBalanceModal from '../../components/Users/UpdateBalanceModal';
 import SendNotificationModal from '../../components/Users/SendNotificationModal';
 
@@ -209,10 +208,8 @@ const UserDetails = () => {
             <UserOrders orders={tradingData.orders} />
 
             {/* Bank Details & KYC */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                <UserBankDetails user={user} />
-                <UserKYC user={user} />
-            </div>
+            <UserBankDetails user={user} />
+
 
             {/* Recent Transactions */}
             <UserTransactions transactions={userDetails.recentTransactions} />

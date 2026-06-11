@@ -12,7 +12,6 @@ import {
   TrendingUp,
   Image,
   Bell,
-  FileCheck,
   BarChart3,
   Layers,
   Menu,
@@ -77,6 +76,24 @@ const Layout = () => {
       description: 'View dashboard statistics'
     },
     {
+      path: '/dashboard/banners',
+      icon: Image,
+      label: 'Banners',
+      description: 'Manage app banners'
+    },
+    {
+      path: '/dashboard/market',
+      icon: TrendingUp,
+      label: 'Top Indices',
+      description: 'Manage top indices and market data'
+    },
+    {
+      path: '/dashboard/index-categories',
+      icon: Layers,
+      label: 'Categories',
+      description: 'Manage index categories'
+    },
+    {
       path: '/dashboard/payment-manager',
       icon: Wallet,
       label: 'Payments',
@@ -95,35 +112,12 @@ const Layout = () => {
       description: 'Manage users'
     },
     {
-      path: '/dashboard/kyc',
-      icon: FileCheck,
-      label: 'KYC',
-      description: 'Verify KYC documents'
-    },
-    {
-      path: '/dashboard/market',
-      icon: TrendingUp,
-      label: 'Market',
-      description: 'Manage market data'
-    },
-    {
-      path: '/dashboard/banners',
-      icon: Image,
-      label: 'Banners',
-      description: 'Manage app banners'
-    },
-    {
       path: '/dashboard/notifications',
       icon: Bell,
       label: 'Notifications',
       description: 'Send push notifications'
     },
-    {
-      path: '/dashboard/index-categories',
-      icon: Layers,
-      label: 'Categories',
-      description: 'Manage index categories'
-    },
+
     {
       path: '/dashboard/reports',
       icon: BarChart3,

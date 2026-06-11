@@ -15,7 +15,7 @@ const IndexCategories = () => {
     name: '',
     description: '',
     displayOrder: 0,
-    isActive: true
+    isActive: true,
   });
 
   useEffect(() => {
@@ -26,10 +26,12 @@ const IndexCategories = () => {
     try {
       setLoading(true);
       const response = await adminAPI.getAllCategories();
-      setCategories(response.data.data.categories || []);
+      console.log('✅ Categories response:', response.data);
+
+      setCategories(Array.isArray(response.data.data) ? response.data.data : []);
     } catch (error) {
       console.error('Error fetching categories:', error);
-      alert('Failed to fetch categories');
+      alert(error.response?.data?.message || 'Failed to fetch categories');
       setCategories([]);
     } finally {
       setLoading(false);
@@ -38,9 +40,13 @@ const IndexCategories = () => {
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: type === 'checkbox'
+        ? checked
+        : name === 'displayOrder'
+          ? Number(value)
+          : value,
     }));
   };
 
@@ -55,11 +61,18 @@ const IndexCategories = () => {
     try {
       setSubmitting(true);
 
+      const payload = {
+        name: formData.name.trim(),
+        description: formData.description?.trim() || '',
+        displayOrder: Number(formData.displayOrder || 0),
+        isActive: formData.isActive,
+      };
+
       if (editingCategory) {
-        await adminAPI.updateCategory(editingCategory._id, formData);
+        await adminAPI.updateCategory(editingCategory._id, payload);
         alert('✅ Category updated successfully!');
       } else {
-        await adminAPI.createCategory(formData);
+        await adminAPI.createCategory(payload);
         alert('✅ Category created successfully!');
       }
 
@@ -77,16 +90,16 @@ const IndexCategories = () => {
   const handleEdit = (category) => {
     setEditingCategory(category);
     setFormData({
-      name: category.name,
+      name: category.name || '',
       description: category.description || '',
       displayOrder: category.displayOrder || 0,
-      isActive: category.isActive !== false
+      isActive: category.isActive !== false,
     });
     setShowModal(true);
   };
 
   const handleDelete = async (id, name) => {
-    if (!confirm(`Are you sure you want to delete "${name}"?`)) return;
+    if (!window.confirm(`Are you sure you want to delete "${name}"?`)) return;
 
     try {
       await adminAPI.deleteCategory(id);
@@ -104,7 +117,7 @@ const IndexCategories = () => {
       name: '',
       description: '',
       displayOrder: 0,
-      isActive: true
+      isActive: true,
     });
   };
 
@@ -119,7 +132,6 @@ const IndexCategories = () => {
         subtitle={`Manage index categories (${categories.length} categories)`}
       />
 
-      {/* Stats & Create Button */}
       <div className="flex items-center justify-between bg-white p-4 rounded-lg shadow-sm border border-gray-200">
         <div className="flex gap-6">
           <div>
@@ -129,7 +141,7 @@ const IndexCategories = () => {
           <div>
             <p className="text-sm text-gray-600">Active Categories</p>
             <p className="text-2xl font-bold text-green-600">
-              {categories.filter(c => c.isActive).length}
+              {categories.filter((c) => c.isActive).length}
             </p>
           </div>
         </div>
@@ -146,12 +158,15 @@ const IndexCategories = () => {
         </button>
       </div>
 
-      {/* Categories Grid */}
       {categories.length === 0 ? (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
           <Layers className="mx-auto text-gray-400 mb-4" size={48} />
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">No categories created yet</h3>
-          <p className="text-gray-600 mb-4">Create your first index category to organize indices</p>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            No categories created yet
+          </h3>
+          <p className="text-gray-600 mb-4">
+            Create your first index category to organize indices
+          </p>
           <button
             onClick={() => setShowModal(true)}
             className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition"
@@ -166,7 +181,6 @@ const IndexCategories = () => {
               key={category._id}
               className="bg-white rounded-lg shadow-md border border-gray-200 hover:shadow-lg transition"
             >
-              {/* Header */}
               <div className="p-6 border-b border-gray-200">
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex items-center gap-3">
@@ -175,35 +189,40 @@ const IndexCategories = () => {
                     </div>
                     <div>
                       <h3 className="font-bold text-gray-900 text-lg">{category.name}</h3>
-                      <span className={`inline-block px-2 py-1 rounded-full text-xs font-semibold mt-1 ${category.isActive
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-gray-100 text-gray-700'
-                        }`}>
+                      <span
+                        className={`inline-block px-2 py-1 rounded-full text-xs font-semibold mt-1 ${category.isActive
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-gray-100 text-gray-700'
+                          }`}
+                      >
                         {category.isActive ? 'Active' : 'Inactive'}
                       </span>
                     </div>
                   </div>
                 </div>
+
                 {category.description && (
                   <p className="text-sm text-gray-600 mt-2">{category.description}</p>
                 )}
               </div>
 
-              {/* Stats */}
               <div className="p-4 bg-gray-50 border-b border-gray-200">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-xs text-gray-600 mb-1">Display Order</p>
-                    <p className="text-lg font-bold text-gray-900">{category.displayOrder || 0}</p>
+                    <p className="text-lg font-bold text-gray-900">
+                      {category.displayOrder || 0}
+                    </p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-600 mb-1">Indices Count</p>
-                    <p className="text-lg font-bold text-blue-600">{category.indicesCount || 0}</p>
+                    <p className="text-lg font-bold text-blue-600">
+                      {category.indicesCount || 0}
+                    </p>
                   </div>
                 </div>
               </div>
 
-              {/* Actions */}
               <div className="p-4 flex gap-2">
                 <button
                   onClick={() => handleEdit(category)}
@@ -225,7 +244,6 @@ const IndexCategories = () => {
         </div>
       )}
 
-      {/* Create/Edit Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
@@ -245,7 +263,6 @@ const IndexCategories = () => {
             </div>
 
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              {/* Category Name */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Category Name *
@@ -261,7 +278,6 @@ const IndexCategories = () => {
                 />
               </div>
 
-              {/* Description */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Description
@@ -276,7 +292,6 @@ const IndexCategories = () => {
                 />
               </div>
 
-              {/* Display Order */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Display Order
@@ -289,12 +304,9 @@ const IndexCategories = () => {
                   min="0"
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
-                <p className="mt-1 text-xs text-gray-500">
-                  Lower numbers appear first
-                </p>
+                <p className="mt-1 text-xs text-gray-500">Lower numbers appear first</p>
               </div>
 
-              {/* Active Status */}
               <div className="flex items-center gap-3">
                 <input
                   type="checkbox"
@@ -309,7 +321,6 @@ const IndexCategories = () => {
                 </label>
               </div>
 
-              {/* Buttons */}
               <div className="flex gap-3 pt-4">
                 <button
                   type="button"

@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import {
   approveWithdrawal,
   rejectWithdrawal
-} from '../store/slices/withdrawalsSlice';
+} from '../../store/slices/withdrawalsSlice';
 import { Check, X, Clock, Phone, User, Building, Calendar, CreditCard, Hash, TrendingDown, CheckCircle, XCircle } from 'lucide-react';
 
 const PendingWithdrawals = () => {

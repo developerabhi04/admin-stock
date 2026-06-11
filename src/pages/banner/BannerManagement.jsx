@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Plus, Trash2, Eye, EyeOff, Upload, X, ImageIcon } from 'lucide-react';
-import { adminAPI } from '../services/api';
-import PageHeader from '../pages/paymentmanager/PageHeader';
-import Loading from '../components/Loader';
+import { adminAPI } from '../../services/api';
+import PageHeader from '../paymentmanager/PageHeader';
+import Loading from '../../components/Loader';
 
 const BannerManagement = () => {
     const [banners, setBanners] = useState([]);

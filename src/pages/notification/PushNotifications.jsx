@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Send, Users, User, Bell, Clock, CheckCircle, Loader } from 'lucide-react';
-import { adminAPI } from '../services/api';
-import PageHeader from '../pages/paymentmanager/PageHeader';
+import { adminAPI } from '../../services/api';
+import PageHeader from '../paymentmanager/PageHeader';
 
 const PushNotifications = () => {
     const [activeTab, setActiveTab] = useState('send'); // 'send' or 'history'
