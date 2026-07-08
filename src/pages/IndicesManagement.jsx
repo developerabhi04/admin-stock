@@ -142,6 +142,7 @@ const IndicesManagement = () => {
                 highValue: index.highValue ?? '',
                 lowValue: index.lowValue ?? '',
                 previousClose: index.previousClose ?? '',
+                defaultDailyRate: index.defaultDailyRate ?? '',
                 logoUrl: index.logoUrl || '',
                 isFeatured: !!index.isFeatured,
                 isActive: typeof index.isActive === 'boolean' ? index.isActive : true,
@@ -200,6 +201,7 @@ const IndicesManagement = () => {
             marketCap: formData.marketCap === '' ? 0 : Number(formData.marketCap),
             volume: formData.volume === '' ? 0 : Number(formData.volume),
             description: formData.description?.trim() || '',
+            defaultDailyRate: formData.defaultDailyRate === '' ? 0 : Number(formData.defaultDailyRate),
         };
 
         try {
@@ -707,6 +709,24 @@ const IndicesManagement = () => {
                                         placeholder="19350.00"
                                         required
                                     />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        Default Daily Return (%)
+                                    </label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        value={formData.defaultDailyRate}
+                                        onChange={(e) => handleChange('defaultDailyRate', e.target.value)}
+                                        className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
+                                        placeholder="e.g., 1 or 2"
+                                    />
+                                    <p className="text-xs text-gray-500 mt-2">
+                                        Shows fixed daily return in the app and can be used as default return.
+                                    </p>
                                 </div>
 
                                 <div>

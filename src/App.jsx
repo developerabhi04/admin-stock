@@ -249,6 +249,8 @@ function App() {
           />
         </Route>
 
+        <Route path="payment-manager/config" element={<PaymentManager defaultTab="config" />} />
+
         <Route path="/" element={<Navigate to="/dashboard" />} />
       </Routes>
     </BrowserRouter>
