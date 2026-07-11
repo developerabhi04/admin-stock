@@ -132,8 +132,16 @@ const BannerManagement = () => {
     };
 
     const getImageUrl = (imageUrl) => {
-        // ✅ Construct full URL for images
-        return `http://localhost:5000${imageUrl}`;
+        if (!imageUrl || typeof imageUrl !== 'string') {
+            return 'https://placehold.co/400x200?text=No+Image';
+        }
+
+        if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+            return imageUrl;
+        }
+
+        const serverUrl = import.meta.env.VITE_SERVER_URL || 'http://localhost:5000';
+        return `${serverUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
     };
 
     if (loading) {
@@ -195,7 +203,8 @@ const BannerManagement = () => {
                                     alt={`Banner ${index + 1}`}
                                     className="w-full h-full object-cover"
                                     onError={(e) => {
-                                        e.target.src = 'https://via.placeholder.com/400x200?text=Image+Not+Found';
+                                        console.warn('❌ Banner image failed:', banner.imageUrl);
+                                        e.currentTarget.src = 'https://placehold.co/400x200?text=Image+Not+Found';
                                     }}
                                 />
 
