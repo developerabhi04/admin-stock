@@ -7,6 +7,7 @@ import usersReducer from './slices/usersSlice';
 import withdrawalsReducer from './slices/withdrawalsSlice';
 import marketReducer from './slices/marketSlice';
 
+
 export const store = configureStore({
   reducer: {
     auth: authReducer,

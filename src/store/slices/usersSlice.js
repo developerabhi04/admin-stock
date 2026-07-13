@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { adminAPI } from '../../services/api';
 
+
 const initialState = {
   users: [],
   userDetails: null,

@@ -23,6 +23,7 @@ import {
     TrendingDown,
     Globe,
     Coins,
+    Wallet,
 } from 'lucide-react';
 import Loading from '../components/Loader';
 
@@ -34,6 +35,8 @@ const initialFormData = {
     highValue: '',
     lowValue: '',
     previousClose: '',
+    defaultDailyRate: '',
+    minimumInvestment: 5000,
     logoUrl: '',
     isFeatured: false,
     isActive: true,
@@ -143,6 +146,7 @@ const IndicesManagement = () => {
                 lowValue: index.lowValue ?? '',
                 previousClose: index.previousClose ?? '',
                 defaultDailyRate: index.defaultDailyRate ?? '',
+                minimumInvestment: index.minimumInvestment ?? 5000,
                 logoUrl: index.logoUrl || '',
                 isFeatured: !!index.isFeatured,
                 isActive: typeof index.isActive === 'boolean' ? index.isActive : true,
@@ -181,9 +185,11 @@ const IndicesManagement = () => {
             formData.currentValue === '' ||
             formData.highValue === '' ||
             formData.lowValue === '' ||
-            formData.previousClose === ''
+            formData.previousClose === '' ||
+            formData.minimumInvestment === '' ||
+            Number(formData.minimumInvestment) <= 0
         ) {
-            alert('Please fill all required fields');
+            alert('Please fill all required fields. Minimum investment must be greater than 0.');
             return;
         }
 
@@ -202,6 +208,7 @@ const IndicesManagement = () => {
             volume: formData.volume === '' ? 0 : Number(formData.volume),
             description: formData.description?.trim() || '',
             defaultDailyRate: formData.defaultDailyRate === '' ? 0 : Number(formData.defaultDailyRate),
+            minimumInvestment: Number(formData.minimumInvestment),
         };
 
         try {
@@ -578,6 +585,13 @@ const IndicesManagement = () => {
                                     )}
                                 </div>
 
+                                <div className="mb-4 flex items-center space-x-2 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
+                                    <Wallet size={16} className="text-emerald-600" />
+                                    <p className="text-sm font-semibold text-emerald-700">
+                                        Min. Investment: ₹{Number(index.minimumInvestment || 5000).toLocaleString('en-IN')}
+                                    </p>
+                                </div>
+
                                 <div className="flex items-center space-x-2">
                                     <button
                                         onClick={() => handleOpenModal(index)}
@@ -728,7 +742,9 @@ const IndicesManagement = () => {
                                         Shows fixed daily return in the app and can be used as default return.
                                     </p>
                                 </div>
+                            </div>
 
+                            <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                                         Previous Close <span className="text-red-500">*</span>
@@ -742,6 +758,25 @@ const IndicesManagement = () => {
                                         placeholder="19390.00"
                                         required
                                     />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        Minimum Investment (₹) <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        type="number"
+                                        step="1"
+                                        min="1"
+                                        value={formData.minimumInvestment}
+                                        onChange={(e) => handleChange('minimumInvestment', e.target.value)}
+                                        className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
+                                        placeholder="e.g., 5000"
+                                        required
+                                    />
+                                    <p className="text-xs text-gray-500 mt-2">
+                                        Users must invest at least this amount to buy this index. Default is ₹5,000.
+                                    </p>
                                 </div>
                             </div>
 

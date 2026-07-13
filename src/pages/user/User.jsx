@@ -114,6 +114,7 @@ const Users = () => {
     }));
   };
 
+  
   const handleSendNotification = (user = null) => {
     if (user) {
       setSelectedUser(user);

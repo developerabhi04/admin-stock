@@ -4,6 +4,8 @@ import { fetchTransactions, setFilters } from '../store/slices/transactionsSlice
 import { Filter } from 'lucide-react';
 import Loading from '../components/Loader';
 
+
+
 const Transactions = () => {
   const dispatch = useDispatch();
   const { transactions, loading, filters } = useSelector((state) => state.transactions);

@@ -25,6 +25,7 @@ const UserBalanceCards = ({ user = {}, portfolio = {} }) => {
       trendIcon: TrendingUp,
       trendClass: 'text-emerald-500',
     },
+    
     {
       title: 'Bonus Balance',
       value: formatCurrency(user.bonusBalance),

@@ -239,6 +239,8 @@ const UserDetails = () => {
                     <p className="text-xs text-purple-600 mt-2 font-medium">● Non-withdrawable</p>
                 </div>
 
+
+
                 {/* Total Balance */}
                 <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 hover:shadow-xl transition">
                     <div className="flex items-center justify-between mb-4">
