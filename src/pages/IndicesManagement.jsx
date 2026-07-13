@@ -36,7 +36,7 @@ const initialFormData = {
     lowValue: '',
     previousClose: '',
     defaultDailyRate: '',
-    minimumInvestment: 5000,
+    minimumInvestment: '',
     logoUrl: '',
     isFeatured: false,
     isActive: true,
@@ -146,7 +146,7 @@ const IndicesManagement = () => {
                 lowValue: index.lowValue ?? '',
                 previousClose: index.previousClose ?? '',
                 defaultDailyRate: index.defaultDailyRate ?? '',
-                minimumInvestment: index.minimumInvestment ?? 5000,
+                minimumInvestment: index.minimumInvestment ?? '',
                 logoUrl: index.logoUrl || '',
                 isFeatured: !!index.isFeatured,
                 isActive: typeof index.isActive === 'boolean' ? index.isActive : true,
@@ -501,6 +501,10 @@ const IndicesManagement = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {indices.map((index) => {
                         const categoryLabel = normalizeCategoryLabel(index) || getCategoryType(index);
+                        const hasMinimumInvestment =
+                            index.minimumInvestment !== null &&
+                            typeof index.minimumInvestment !== 'undefined' &&
+                            Number(index.minimumInvestment) > 0;
 
                         return (
                             <div
@@ -585,10 +589,23 @@ const IndicesManagement = () => {
                                     )}
                                 </div>
 
-                                <div className="mb-4 flex items-center space-x-2 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
-                                    <Wallet size={16} className="text-emerald-600" />
-                                    <p className="text-sm font-semibold text-emerald-700">
-                                        Min. Investment: ₹{Number(index.minimumInvestment || 5000).toLocaleString('en-IN')}
+                                <div
+                                    className={`mb-4 flex items-center space-x-2 rounded-lg px-3 py-2 border ${hasMinimumInvestment
+                                        ? 'bg-emerald-50 border-emerald-200'
+                                        : 'bg-orange-50 border-orange-200'
+                                        }`}
+                                >
+                                    <Wallet
+                                        size={16}
+                                        className={hasMinimumInvestment ? 'text-emerald-600' : 'text-orange-600'}
+                                    />
+                                    <p
+                                        className={`text-sm font-semibold ${hasMinimumInvestment ? 'text-emerald-700' : 'text-orange-700'
+                                            }`}
+                                    >
+                                        {hasMinimumInvestment
+                                            ? `Min. Investment: ₹${Number(index.minimumInvestment).toLocaleString('en-IN')}`
+                                            : 'Min. Investment: Not set'}
                                     </p>
                                 </div>
 
@@ -771,11 +788,11 @@ const IndicesManagement = () => {
                                         value={formData.minimumInvestment}
                                         onChange={(e) => handleChange('minimumInvestment', e.target.value)}
                                         className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
-                                        placeholder="e.g., 5000"
+                                        placeholder="Set a value for this index, e.g., 2000 or 10000"
                                         required
                                     />
                                     <p className="text-xs text-gray-500 mt-2">
-                                        Users must invest at least this amount to buy this index. Default is ₹5,000.
+                                        Each index has its own minimum. No default is applied — set the exact amount for this index.
                                     </p>
                                 </div>
                             </div>
