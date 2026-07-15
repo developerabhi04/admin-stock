@@ -81,12 +81,12 @@ const Layout = () => {
       label: 'Banners',
       description: 'Manage app banners'
     },
-    // {
-    //   path: '/dashboard/market',
-    //   icon: TrendingUp,
-    //   label: 'Top Indices',
-    //   description: 'Manage top indices and market data'
-    // },
+    {
+      path: '/dashboard/market',
+      icon: TrendingUp,
+      label: 'Top Indices',
+      description: 'Manage top indices and market data'
+    },
     {
       path: '/dashboard/index-categories',
       icon: Layers,

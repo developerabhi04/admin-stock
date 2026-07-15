@@ -37,6 +37,7 @@ const initialFormData = {
     previousClose: '',
     defaultDailyRate: '',
     minimumInvestment: '',
+    lockPeriodDays: '',
     logoUrl: '',
     isFeatured: false,
     isActive: true,
@@ -57,17 +58,11 @@ const getCategoryType = (item) => {
     const label = normalizeCategoryLabel(item).toLowerCase();
     const slug = normalizeCategorySlug(item).toLowerCase();
 
-    if (
-        label.includes('global') ||
-        slug.includes('global')
-    ) {
+    if (label.includes('global') || slug.includes('global')) {
         return 'Global';
     }
 
-    if (
-        label.includes('crypto') ||
-        slug.includes('crypto')
-    ) {
+    if (label.includes('crypto') || slug.includes('crypto')) {
         return 'Crypto';
     }
 
@@ -147,6 +142,7 @@ const IndicesManagement = () => {
                 previousClose: index.previousClose ?? '',
                 defaultDailyRate: index.defaultDailyRate ?? '',
                 minimumInvestment: index.minimumInvestment ?? '',
+                lockPeriodDays: index.lockPeriodDays ?? '',
                 logoUrl: index.logoUrl || '',
                 isFeatured: !!index.isFeatured,
                 isActive: typeof index.isActive === 'boolean' ? index.isActive : true,
@@ -158,7 +154,6 @@ const IndicesManagement = () => {
             setEditingIndex(null);
             setFormData(initialFormData);
         }
-
         setShowModal(true);
     };
 
@@ -187,9 +182,11 @@ const IndicesManagement = () => {
             formData.lowValue === '' ||
             formData.previousClose === '' ||
             formData.minimumInvestment === '' ||
-            Number(formData.minimumInvestment) <= 0
+            Number(formData.minimumInvestment) <= 0 ||
+            formData.lockPeriodDays === '' ||
+            Number(formData.lockPeriodDays) <= 0
         ) {
-            alert('Please fill all required fields. Minimum investment must be greater than 0.');
+            alert('Please fill all required fields. Minimum investment and lock period must be greater than 0.');
             return;
         }
 
@@ -209,6 +206,7 @@ const IndicesManagement = () => {
             description: formData.description?.trim() || '',
             defaultDailyRate: formData.defaultDailyRate === '' ? 0 : Number(formData.defaultDailyRate),
             minimumInvestment: Number(formData.minimumInvestment),
+            lockPeriodDays: Number(formData.lockPeriodDays),
         };
 
         try {
@@ -590,7 +588,7 @@ const IndicesManagement = () => {
                                 </div>
 
                                 <div
-                                    className={`mb-4 flex items-center space-x-2 rounded-lg px-3 py-2 border ${hasMinimumInvestment
+                                    className={`mb-3 flex items-center space-x-2 rounded-lg px-3 py-2 border ${hasMinimumInvestment
                                         ? 'bg-emerald-50 border-emerald-200'
                                         : 'bg-orange-50 border-orange-200'
                                         }`}
@@ -607,6 +605,12 @@ const IndicesManagement = () => {
                                             ? `Min. Investment: ₹${Number(index.minimumInvestment).toLocaleString('en-IN')}`
                                             : 'Min. Investment: Not set'}
                                     </p>
+                                </div>
+
+                                <div className="mb-4 flex items-center space-x-2 rounded-lg px-3 py-2 border bg-blue-50 border-blue-200">
+                                    <span className="text-sm font-semibold text-blue-700">
+                                        Period: {Number(index.lockPeriodDays || 0) > 0 ? `${Number(index.lockPeriodDays)} Days` : 'Not set'}
+                                    </span>
                                 </div>
 
                                 <div className="flex items-center space-x-2">
@@ -761,7 +765,7 @@ const IndicesManagement = () => {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-3 gap-4">
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                                         Previous Close <span className="text-red-500">*</span>
@@ -779,7 +783,7 @@ const IndicesManagement = () => {
 
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                        Minimum Investment (₹) <span className="text-red-500">*</span>
+                                        Minimum Investment <span className="text-red-500">*</span>
                                     </label>
                                     <input
                                         type="number"
@@ -788,11 +792,30 @@ const IndicesManagement = () => {
                                         value={formData.minimumInvestment}
                                         onChange={(e) => handleChange('minimumInvestment', e.target.value)}
                                         className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
-                                        placeholder="Set a value for this index, e.g., 2000 or 10000"
+                                        placeholder="e.g. 2000"
                                         required
                                     />
                                     <p className="text-xs text-gray-500 mt-2">
-                                        Each index has its own minimum. No default is applied — set the exact amount for this index.
+                                        Each index has its own minimum investment amount.
+                                    </p>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        Period (Days) <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        type="number"
+                                        step="1"
+                                        min="1"
+                                        value={formData.lockPeriodDays}
+                                        onChange={(e) => handleChange('lockPeriodDays', e.target.value)}
+                                        className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
+                                        placeholder="e.g. 20 or 30"
+                                        required
+                                    />
+                                    <p className="text-xs text-gray-500 mt-2">
+                                        Set how many days this index investment stays locked.
                                     </p>
                                 </div>
                             </div>
@@ -872,7 +895,6 @@ const IndicesManagement = () => {
                                             <p className="text-sm text-gray-600">Show in Top Indices</p>
                                         </div>
                                     </div>
-
                                     <label className="relative inline-flex items-center cursor-pointer">
                                         <input
                                             type="checkbox"
@@ -887,9 +909,8 @@ const IndicesManagement = () => {
                                 <div className="flex items-center justify-between p-4 bg-blue-50 border border-blue-200 rounded-xl">
                                     <div>
                                         <p className="font-semibold text-gray-900">Active Status</p>
-                                        <p className="text-sm text-gray-600">Visible in app APIs</p>
+                                        <p className="text-sm text-gray-600">Visible in app & APIs</p>
                                     </div>
-
                                     <label className="relative inline-flex items-center cursor-pointer">
                                         <input
                                             type="checkbox"
@@ -909,14 +930,9 @@ const IndicesManagement = () => {
                                     className="flex-1 bg-green-500 hover:bg-green-600 disabled:opacity-50 text-white py-3 rounded-xl font-semibold transition"
                                 >
                                     {actionLoading
-                                        ? editingIndex
-                                            ? 'Updating...'
-                                            : 'Creating...'
-                                        : editingIndex
-                                            ? 'Update Index'
-                                            : 'Create Index'}
+                                        ? (editingIndex ? 'Updating...' : 'Creating...')
+                                        : (editingIndex ? 'Update Index' : 'Create Index')}
                                 </button>
-
                                 <button
                                     type="button"
                                     onClick={handleCloseModal}
@@ -936,16 +952,10 @@ const IndicesManagement = () => {
                         <div className="bg-red-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                             <AlertCircle className="text-red-600" size={32} />
                         </div>
-
-                        <h3 className="text-2xl font-bold text-gray-900 text-center mb-2">
-                            Delete Index?
-                        </h3>
-
+                        <h3 className="text-2xl font-bold text-gray-900 text-center mb-2">Delete Index?</h3>
                         <p className="text-gray-600 text-center mb-6">
-                            This action cannot be undone. The index will be permanently removed from
-                            the system.
+                            This action cannot be undone. The index will be permanently removed from the system.
                         </p>
-
                         <div className="flex space-x-3">
                             <button
                                 onClick={handleDelete}
@@ -953,7 +963,6 @@ const IndicesManagement = () => {
                             >
                                 Delete
                             </button>
-
                             <button
                                 onClick={() => setDeleteModal(null)}
                                 className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 py-3 rounded-xl font-semibold transition"
