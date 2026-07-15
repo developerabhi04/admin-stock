@@ -3,6 +3,30 @@ import axios from 'axios';
 const API_URL = import.meta.env.VITE_API_URL || '/api/v1';
 console.log('🌐 API_URL:', API_URL);
 
+const getAdminToken = () => {
+  try {
+    return localStorage.getItem('adminToken');
+  } catch (error) {
+    console.error('❌ Unable to read adminToken from localStorage:', error);
+    return null;
+  }
+};
+
+const clearAdminSession = () => {
+  try {
+    localStorage.removeItem('adminToken');
+    localStorage.removeItem('adminData');
+  } catch (error) {
+    console.error('❌ Unable to clear admin session:', error);
+  }
+};
+
+const redirectToLogin = () => {
+  if (typeof window !== 'undefined') {
+    window.location.href = '/login';
+  }
+};
+
 const api = axios.create({
   baseURL: API_URL,
   headers: {
@@ -10,26 +34,30 @@ const api = axios.create({
   },
 });
 
-// Add token to requests
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('adminToken');
-  console.log('🔑 Token:', token ? 'Present' : 'Missing');
+api.interceptors.request.use(
+  (config) => {
+    const token = getAdminToken();
+    console.log('🔑 Token:', token ? 'Present' : 'Missing');
 
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    console.log(
+      '📤 Request:',
+      config.method?.toUpperCase(),
+      `${config.baseURL || ''}${config.url || ''}`,
+      config.params || config.data || ''
+    );
+
+    return config;
+  },
+  (error) => {
+    console.error('❌ Request Interceptor Error:', error);
+    return Promise.reject(error);
   }
+);
 
-  console.log(
-    '📤 Request:',
-    config.method?.toUpperCase(),
-    `${config.baseURL}${config.url}`,
-    config.params || ''
-  );
-
-  return config;
-});
-
-// Handle errors and log responses
 api.interceptors.response.use(
   (response) => {
     console.log('📥 Response:', response.config.url, response.data);
@@ -39,9 +67,8 @@ api.interceptors.response.use(
     console.error('❌ API Error:', error.response?.data || error.message);
 
     if (error.response?.status === 401) {
-      localStorage.removeItem('adminToken');
-      localStorage.removeItem('adminData');
-      window.location.href = '/login';
+      clearAdminSession();
+      redirectToLogin();
     }
 
     return Promise.reject(error);
@@ -49,30 +76,24 @@ api.interceptors.response.use(
 );
 
 export const adminAPI = {
-  // ================= AUTH =================
   login: (credentials) => api.post('/admin/login', credentials),
 
-  // ================= DASHBOARD =================
   getDashboardStats: () => api.get('/admin/dashboard/stats'),
   getCompleteDashboardStats: () => api.get('/admin/dashboard/complete-stats'),
 
-  // ================= PAYMENTS =================
   getPendingPayments: (page = 1, limit = 20) =>
-    api.get(`/admin/payments/pending?page=${page}&limit=${limit}`),
+    api.get('/admin/payments/pending', { params: { page, limit } }),
   approvePayment: (data) => api.post('/admin/payments/approve', data),
   rejectPayment: (data) => api.post('/admin/payments/reject', data),
 
-  // ================= WITHDRAWALS =================
   getPendingWithdrawals: (page = 1, limit = 20) =>
-    api.get(`/admin/withdrawals/pending?page=${page}&limit=${limit}`),
+    api.get('/admin/withdrawals/pending', { params: { page, limit } }),
   approveWithdrawal: (data) => api.post('/admin/withdrawals/approve', data),
   rejectWithdrawal: (data) => api.post('/admin/withdrawals/reject', data),
   getWithdrawalStats: () => api.get('/admin/withdrawals/stats'),
 
-  // ================= TRANSACTIONS =================
   getAllTransactions: (params) => api.get('/admin/transactions', { params }),
 
-  // ================= USERS =================
   getAllUsers: (params) => {
     console.log('🔵 getAllUsers called with params:', params);
     return api.get('/admin/users', { params });
@@ -81,14 +102,12 @@ export const adminAPI = {
   getUserDetails: (userId) => api.get(`/admin/users/${userId}`),
   updateUserBalance: (data) => api.post('/admin/users/update-balance', data),
 
-  // ================= STOCKS =================
   getAllStocks: (params) => api.get('/admin/stocks', { params }),
   createStock: (data) => api.post('/admin/stocks', data),
   updateStock: (stockId, data) => api.put(`/admin/stocks/${stockId}`, data),
   deleteStock: (stockId) => api.delete(`/admin/stocks/${stockId}`),
   getFeaturedStocks: () => api.get('/admin/stocks/featured'),
 
-  // ================= INDICES MANAGEMENT =================
   getAllIndices: (params) => api.get('/admin/market/indices', { params }),
   createIndex: (data) => api.post('/admin/market/indices', data),
   updateIndex: (indexId, data) => api.put(`/admin/market/indices/${indexId}`, data),
@@ -96,10 +115,8 @@ export const adminAPI = {
   getFeaturedIndices: () =>
     api.get('/admin/market/indices', { params: { featured: true } }),
 
-  // ================= MARKET STATS =================
   getMarketStats: () => api.get('/admin/market/stats'),
 
-  // ================= BANNERS =================
   getAllBanners: () => api.get('/banners'),
   uploadBanner: (formData) =>
     api.post('/banners', formData, {
@@ -109,7 +126,6 @@ export const adminAPI = {
   toggleBannerStatus: (bannerId) => api.patch(`/banners/${bannerId}/toggle`),
   reorderBanners: (banners) => api.post('/banners/reorder', { banners }),
 
-  // ================= PUSH NOTIFICATIONS =================
   sendNotificationToAll: (data) => api.post('/notifications/admin/send-all', data),
   sendNotificationToUser: (userId, data) =>
     api.post(`/notifications/admin/send/${userId}`, data),
@@ -117,7 +133,6 @@ export const adminAPI = {
     api.get('/notifications/admin/history', { params }),
   getUsersForNotification: () => api.get('/notifications/admin/users-list'),
 
-  // ================= INDEX CATEGORIES =================
   getAllCategories: () => api.get('/admin/market/categories'),
   createCategory: (data) => api.post('/admin/market/categories', data),
   updateCategory: (categoryId, data) =>
@@ -125,7 +140,6 @@ export const adminAPI = {
   deleteCategory: (categoryId) =>
     api.delete(`/admin/market/categories/${categoryId}`),
 
-  // ================= REPORTS =================
   getReports: (params) => api.get('/admin/reports', { params }),
   getTransactionReports: (params) =>
     api.get('/admin/reports/transactions', { params }),
@@ -133,7 +147,6 @@ export const adminAPI = {
     api.get('/admin/reports/user-growth', { params }),
   getRevenueReport: (params) => api.get('/admin/reports/revenue', { params }),
 
-  // ================= ADMIN MANAGEMENT =================
   createAdmin: (data) => api.post('/admin/admins/create', data),
   getAllAdmins: () => api.get('/admin/admins'),
   updateAdminRole: (adminId, role) =>
@@ -141,10 +154,8 @@ export const adminAPI = {
   deleteAdmin: (adminId) => api.delete(`/admin/admins/${adminId}`),
   getAdminActivity: (adminId) => api.get(`/admin/admins/${adminId}/activity`),
 
-  // ================= BACKWARD COMPATIBILITY =================
   createPaymentManager: (data) => api.post('/admin/create-payment-manager', data),
 
-  // ================= PAYMENT CONFIG =================
   getPaymentConfig: () => {
     console.log('🔵 getPaymentConfig called');
     return api.get('/admin/payment-config');
@@ -168,4 +179,5 @@ export const getReportsOverview = async () => {
   return response.data;
 };
 
+export { getAdminToken, clearAdminSession };
 export default api;

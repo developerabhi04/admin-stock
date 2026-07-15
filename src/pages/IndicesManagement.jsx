@@ -46,46 +46,62 @@ const initialFormData = {
     description: '',
 };
 
-const normalizeCategoryLabel = (item) => {
-    return item?.categoryName || item?.category?.name || '';
+const toNumberOrZero = (value) => {
+    if (value === '' || value === null || value === undefined) return 0;
+    const num = Number(value);
+    return Number.isNaN(num) ? 0 : num;
 };
 
-const normalizeCategorySlug = (item) => {
-    return item?.categorySlug || item?.category?.slug || '';
+const toOptionalNumber = (value) => {
+    if (value === '' || value === null || value === undefined) return 0;
+    const num = Number(value);
+    return Number.isNaN(num) ? 0 : num;
 };
+
+const normalizeCategoryLabel = (item) =>
+    item?.categoryName || item?.category?.name || '';
+
+const normalizeCategorySlug = (item) =>
+    item?.categorySlug || item?.category?.slug || '';
 
 const getCategoryType = (item) => {
     const label = normalizeCategoryLabel(item).toLowerCase();
     const slug = normalizeCategorySlug(item).toLowerCase();
 
-    if (label.includes('global') || slug.includes('global')) {
-        return 'Global';
-    }
-
-    if (label.includes('crypto') || slug.includes('crypto')) {
-        return 'Crypto';
-    }
-
+    if (label.includes('global') || slug.includes('global')) return 'Global';
+    if (label.includes('crypto') || slug.includes('crypto')) return 'Crypto';
     return 'Indian';
 };
 
 const IndicesManagement = () => {
     const dispatch = useDispatch();
 
-    const { indices, totalIndices, loading, filters, actionLoading } = useSelector(
-        (state) => state.market
-    );
+    const {
+        indices = [],
+        totalIndices = 0,
+        loading,
+        filters,
+        actionLoading,
+    } = useSelector((state) => state.market);
 
     const [categories, setCategories] = useState([]);
     const [showModal, setShowModal] = useState(false);
     const [editingIndex, setEditingIndex] = useState(null);
     const [deleteModal, setDeleteModal] = useState(null);
-    const [searchTerm, setSearchTerm] = useState('');
+    const [searchTerm, setSearchTerm] = useState(filters?.search || '');
     const [showFilters, setShowFilters] = useState(false);
     const [formData, setFormData] = useState(initialFormData);
 
-    const loadIndices = () => {
-        dispatch(fetchIndices({ page: 1, limit: 50, ...filters }));
+    const loadIndices = async () => {
+        await dispatch(
+            fetchIndices({
+                page: 1,
+                limit: 50,
+                category: filters?.category || '',
+                featured: filters?.featured || '',
+                search: filters?.search || '',
+            })
+        );
     };
 
     const loadCategories = async () => {
@@ -97,7 +113,7 @@ const IndicesManagement = () => {
                 : Array.isArray(raw)
                     ? raw
                     : [];
-            setCategories(nextCategories);
+            setCategories(nextCategories.filter(Boolean));
         } catch (error) {
             console.error('Failed to fetch categories:', error);
             setCategories([]);
@@ -109,18 +125,25 @@ const IndicesManagement = () => {
     }, []);
 
     useEffect(() => {
-        dispatch(fetchIndices({ page: 1, limit: 50, ...filters }));
+        dispatch(
+            fetchIndices({
+                page: 1,
+                limit: 50,
+                category: filters?.category || '',
+                featured: filters?.featured || '',
+                search: filters?.search || '',
+            })
+        );
     }, [dispatch, filters]);
 
     const stats = useMemo(() => {
         const list = Array.isArray(indices) ? indices : [];
-
         return {
             total: totalIndices || list.length || 0,
             indian: list.filter((i) => getCategoryType(i) === 'Indian').length,
             global: list.filter((i) => getCategoryType(i) === 'Global').length,
             crypto: list.filter((i) => getCategoryType(i) === 'Crypto').length,
-            featured: list.filter((i) => i.isFeatured).length,
+            featured: list.filter((i) => !!i?.isFeatured).length,
         };
     }, [indices, totalIndices]);
 
@@ -133,27 +156,28 @@ const IndicesManagement = () => {
         if (index) {
             setEditingIndex(index);
             setFormData({
-                name: index.name || '',
-                symbol: index.symbol || '',
-                category: index.categoryId || index.category?._id || '',
-                currentValue: index.currentValue ?? '',
-                highValue: index.highValue ?? '',
-                lowValue: index.lowValue ?? '',
-                previousClose: index.previousClose ?? '',
-                defaultDailyRate: index.defaultDailyRate ?? '',
-                minimumInvestment: index.minimumInvestment ?? '',
-                lockPeriodDays: index.lockPeriodDays ?? '',
-                logoUrl: index.logoUrl || '',
-                isFeatured: !!index.isFeatured,
-                isActive: typeof index.isActive === 'boolean' ? index.isActive : true,
-                marketCap: index.marketCap ?? '',
-                volume: index.volume ?? '',
-                description: index.description || '',
+                name: index?.name || '',
+                symbol: index?.symbol || '',
+                category: index?.categoryId || index?.category?._id || index?.category?.id || '',
+                currentValue: index?.currentValue ?? '',
+                highValue: index?.highValue ?? '',
+                lowValue: index?.lowValue ?? '',
+                previousClose: index?.previousClose ?? '',
+                defaultDailyRate: index?.defaultDailyRate ?? '',
+                minimumInvestment: index?.minimumInvestment ?? '',
+                lockPeriodDays: index?.lockPeriodDays ?? '',
+                logoUrl: index?.logoUrl || '',
+                isFeatured: !!index?.isFeatured,
+                isActive: typeof index?.isActive === 'boolean' ? index.isActive : true,
+                marketCap: index?.marketCap ?? '',
+                volume: index?.volume ?? '',
+                description: index?.description || '',
             });
         } else {
             setEditingIndex(null);
             setFormData(initialFormData);
         }
+
         setShowModal(true);
     };
 
@@ -170,47 +194,64 @@ const IndicesManagement = () => {
         }));
     };
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-
+    const validateForm = () => {
         if (
-            !formData.name ||
-            !formData.symbol ||
+            !formData.name.trim() ||
+            !formData.symbol.trim() ||
             !formData.category ||
             formData.currentValue === '' ||
             formData.highValue === '' ||
             formData.lowValue === '' ||
             formData.previousClose === '' ||
             formData.minimumInvestment === '' ||
-            Number(formData.minimumInvestment) <= 0 ||
-            formData.lockPeriodDays === '' ||
-            Number(formData.lockPeriodDays) <= 0
+            formData.lockPeriodDays === ''
         ) {
-            alert('Please fill all required fields. Minimum investment and lock period must be greater than 0.');
+            return 'Please fill all required fields.';
+        }
+
+        if (Number(formData.minimumInvestment) <= 0) {
+            return 'Minimum investment must be greater than 0.';
+        }
+
+        if (Number(formData.lockPeriodDays) <= 0) {
+            return 'Lock period days must be greater than 0.';
+        }
+
+        return null;
+    };
+
+    const buildPayload = () => ({
+        name: formData.name.trim(),
+        symbol: formData.symbol.trim().toUpperCase(),
+        category: formData.category,
+        currentValue: toNumberOrZero(formData.currentValue),
+        highValue: toNumberOrZero(formData.highValue),
+        lowValue: toNumberOrZero(formData.lowValue),
+        previousClose: toNumberOrZero(formData.previousClose),
+        defaultDailyRate: toOptionalNumber(formData.defaultDailyRate),
+        minimumInvestment: toNumberOrZero(formData.minimumInvestment),
+        lockPeriodDays: toNumberOrZero(formData.lockPeriodDays),
+        logoUrl: formData.logoUrl?.trim() || '',
+        isFeatured: !!formData.isFeatured,
+        isActive: !!formData.isActive,
+        marketCap: toOptionalNumber(formData.marketCap),
+        volume: toOptionalNumber(formData.volume),
+        description: formData.description?.trim() || '',
+    });
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+
+        const validationError = validateForm();
+        if (validationError) {
+            alert(validationError);
             return;
         }
 
-        const payload = {
-            name: formData.name.trim(),
-            symbol: formData.symbol.trim().toUpperCase(),
-            category: formData.category,
-            currentValue: Number(formData.currentValue),
-            highValue: Number(formData.highValue),
-            lowValue: Number(formData.lowValue),
-            previousClose: Number(formData.previousClose),
-            logoUrl: formData.logoUrl?.trim() || '',
-            isFeatured: !!formData.isFeatured,
-            isActive: !!formData.isActive,
-            marketCap: formData.marketCap === '' ? 0 : Number(formData.marketCap),
-            volume: formData.volume === '' ? 0 : Number(formData.volume),
-            description: formData.description?.trim() || '',
-            defaultDailyRate: formData.defaultDailyRate === '' ? 0 : Number(formData.defaultDailyRate),
-            minimumInvestment: Number(formData.minimumInvestment),
-            lockPeriodDays: Number(formData.lockPeriodDays),
-        };
+        const payload = buildPayload();
 
         try {
-            if (editingIndex) {
+            if (editingIndex?._id) {
                 await dispatch(
                     updateIndex({
                         indexId: editingIndex._id,
@@ -224,37 +265,58 @@ const IndicesManagement = () => {
             }
 
             handleCloseModal();
-            loadIndices();
+            await loadIndices();
         } catch (error) {
-            alert('Error: ' + error);
+            alert(error || 'Something went wrong');
         }
     };
 
     const handleDelete = async () => {
+        if (!deleteModal) return;
+
         try {
             await dispatch(deleteIndex(deleteModal)).unwrap();
             alert('Index deleted successfully!');
             setDeleteModal(null);
-            loadIndices();
+            await loadIndices();
         } catch (error) {
-            alert('Error: ' + error);
+            alert(error || 'Failed to delete index');
         }
     };
 
     const handleToggleFeatured = async (index) => {
+        if (!index?._id) return;
+
         try {
+            const payload = {
+                name: index?.name || '',
+                symbol: index?.symbol || '',
+                category: index?.categoryId || index?.category?._id || index?.category?.id || '',
+                currentValue: toNumberOrZero(index?.currentValue),
+                highValue: toNumberOrZero(index?.highValue),
+                lowValue: toNumberOrZero(index?.lowValue),
+                previousClose: toNumberOrZero(index?.previousClose),
+                defaultDailyRate: toOptionalNumber(index?.defaultDailyRate),
+                minimumInvestment: toNumberOrZero(index?.minimumInvestment),
+                lockPeriodDays: toNumberOrZero(index?.lockPeriodDays),
+                logoUrl: index?.logoUrl || '',
+                isFeatured: !index?.isFeatured,
+                isActive: typeof index?.isActive === 'boolean' ? index.isActive : true,
+                marketCap: toOptionalNumber(index?.marketCap),
+                volume: toOptionalNumber(index?.volume),
+                description: index?.description || '',
+            };
+
             await dispatch(
                 updateIndex({
                     indexId: index._id,
-                    data: {
-                        isFeatured: !index.isFeatured,
-                    },
+                    data: payload,
                 })
             ).unwrap();
 
-            loadIndices();
+            await loadIndices();
         } catch (error) {
-            alert('Error: ' + error);
+            alert(error || 'Failed to update featured status');
         }
     };
 
@@ -307,7 +369,7 @@ const IndicesManagement = () => {
         dispatch(setFilters({ category: slugValue }));
     };
 
-    if (loading && indices.length === 0) {
+    if (loading && (!indices || indices.length === 0)) {
         return <Loading message="Loading Indices..." />;
     }
 
@@ -396,10 +458,7 @@ const IndicesManagement = () => {
                 <div className="flex flex-col md:flex-row md:items-center space-y-4 md:space-y-0 md:space-x-4">
                     <form onSubmit={handleSearch} className="flex-1">
                         <div className="relative">
-                            <Search
-                                className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"
-                                size={20}
-                            />
+                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
                             <input
                                 type="text"
                                 value={searchTerm}
@@ -433,9 +492,9 @@ const IndicesManagement = () => {
                         <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
                             <button
                                 onClick={() => dispatch(setFilters({ category: '' }))}
-                                className={`px-4 py-2 rounded-lg text-sm font-medium transition ${filters.category === ''
-                                    ? 'bg-green-500 text-white'
-                                    : 'bg-gray-50 hover:bg-gray-100 text-gray-700'
+                                className={`px-4 py-2 rounded-lg text-sm font-medium transition ${!filters?.category
+                                        ? 'bg-green-500 text-white'
+                                        : 'bg-gray-50 hover:bg-gray-100 text-gray-700'
                                     }`}
                             >
                                 All Categories
@@ -443,22 +502,22 @@ const IndicesManagement = () => {
 
                             {categories.map((cat) => (
                                 <button
-                                    key={cat._id}
-                                    onClick={() => filterByCategorySlug(cat.slug || cat.name)}
-                                    className={`px-4 py-2 rounded-lg text-sm font-medium transition ${filters.category === (cat.slug || cat.name)
-                                        ? 'bg-blue-500 text-white'
-                                        : 'bg-gray-50 hover:bg-gray-100 text-gray-700'
+                                    key={cat?._id || cat?.id}
+                                    onClick={() => filterByCategorySlug(cat?.slug || cat?.name || '')}
+                                    className={`px-4 py-2 rounded-lg text-sm font-medium transition ${filters?.category === (cat?.slug || cat?.name)
+                                            ? 'bg-blue-500 text-white'
+                                            : 'bg-gray-50 hover:bg-gray-100 text-gray-700'
                                         }`}
                                 >
-                                    {cat.name}
+                                    {cat?.name}
                                 </button>
                             ))}
 
                             <button
-                                onClick={() => dispatch(setFilters({ featured: 'true' }))}
-                                className={`px-4 py-2 rounded-lg text-sm font-medium transition ${filters.featured === 'true'
-                                    ? 'bg-yellow-500 text-white'
-                                    : 'bg-gray-50 hover:bg-gray-100 text-gray-700'
+                                onClick={() => dispatch(setFilters({ featured: true }))}
+                                className={`px-4 py-2 rounded-lg text-sm font-medium transition ${filters?.featured === true
+                                        ? 'bg-yellow-500 text-white'
+                                        : 'bg-gray-50 hover:bg-gray-100 text-gray-700'
                                     }`}
                             >
                                 Featured
@@ -499,19 +558,20 @@ const IndicesManagement = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {indices.map((index) => {
                         const categoryLabel = normalizeCategoryLabel(index) || getCategoryType(index);
+
                         const hasMinimumInvestment =
-                            index.minimumInvestment !== null &&
-                            typeof index.minimumInvestment !== 'undefined' &&
-                            Number(index.minimumInvestment) > 0;
+                            index?.minimumInvestment !== null &&
+                            index?.minimumInvestment !== undefined &&
+                            Number(index?.minimumInvestment) > 0;
 
                         return (
                             <div
-                                key={index._id}
+                                key={index?._id || index?.id}
                                 className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 hover:shadow-lg transition"
                             >
                                 <div className="flex items-start justify-between mb-4">
                                     <div className="flex items-center space-x-3">
-                                        {index.logoUrl ? (
+                                        {index?.logoUrl ? (
                                             <div className="w-12 h-12 rounded-xl overflow-hidden border border-gray-200 bg-white flex items-center justify-center">
                                                 <img
                                                     src={index.logoUrl}
@@ -530,43 +590,44 @@ const IndicesManagement = () => {
                                         )}
 
                                         <div>
-                                            <h3 className="font-bold text-gray-900">{index.name}</h3>
-                                            <p className="text-sm text-gray-500">{index.symbol}</p>
+                                            <h3 className="font-bold text-gray-900">{index?.name}</h3>
+                                            <p className="text-sm text-gray-500">{index?.symbol}</p>
                                         </div>
                                     </div>
 
                                     <button
                                         onClick={() => handleToggleFeatured(index)}
-                                        className={`p-2 rounded-lg transition ${index.isFeatured
-                                            ? 'bg-yellow-100 text-yellow-600'
-                                            : 'bg-gray-100 text-gray-400 hover:bg-yellow-100 hover:text-yellow-600'
+                                        className={`p-2 rounded-lg transition ${index?.isFeatured
+                                                ? 'bg-yellow-100 text-yellow-600'
+                                                : 'bg-gray-100 text-gray-400 hover:bg-yellow-100 hover:text-yellow-600'
                                             }`}
                                     >
-                                        <Star size={18} className={index.isFeatured ? 'fill-current' : ''} />
+                                        <Star size={18} className={index?.isFeatured ? 'fill-current' : ''} />
                                     </button>
                                 </div>
 
                                 <div className="mb-4">
                                     <p className="text-3xl font-bold text-gray-900">
-                                        {Number(index.currentValue || 0).toLocaleString()}
+                                        {Number(index?.currentValue || 0).toLocaleString()}
                                     </p>
 
                                     <div className="flex items-center space-x-2 mt-1">
-                                        {Number(index.changePercent) >= 0 ? (
+                                        {Number(index?.changePercent || 0) > 0 ? (
                                             <span className="text-green-600 text-sm font-semibold flex items-center">
                                                 <TrendingUp size={14} className="mr-1" />
-                                                +{Number(index.changePercent || 0).toFixed(2)}%
+                                                {Number(index?.changePercent || 0).toFixed(2)}%
                                             </span>
-                                        ) : (
+                                        ) : Number(index?.changePercent || 0) < 0 ? (
                                             <span className="text-red-600 text-sm font-semibold flex items-center">
                                                 <TrendingDown size={14} className="mr-1" />
-                                                {Number(index.changePercent || 0).toFixed(2)}%
+                                                {Math.abs(Number(index?.changePercent || 0)).toFixed(2)}%
                                             </span>
+                                        ) : (
+                                            <span className="text-gray-500 text-sm">0.00%</span>
                                         )}
 
                                         <span className="text-gray-500 text-sm">
-                                            {Number(index.change) >= 0 ? '+' : ''}
-                                            {Number(index.change || 0).toFixed(2)}
+                                            {Number(index?.change || 0).toFixed(2)}
                                         </span>
                                     </div>
                                 </div>
@@ -580,7 +641,7 @@ const IndicesManagement = () => {
                                         {categoryLabel}
                                     </span>
 
-                                    {index.isFeatured && (
+                                    {index?.isFeatured && (
                                         <span className="inline-block px-3 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-700">
                                             Top Index
                                         </span>
@@ -589,8 +650,8 @@ const IndicesManagement = () => {
 
                                 <div
                                     className={`mb-3 flex items-center space-x-2 rounded-lg px-3 py-2 border ${hasMinimumInvestment
-                                        ? 'bg-emerald-50 border-emerald-200'
-                                        : 'bg-orange-50 border-orange-200'
+                                            ? 'bg-emerald-50 border-emerald-200'
+                                            : 'bg-orange-50 border-orange-200'
                                         }`}
                                 >
                                     <Wallet
@@ -602,14 +663,17 @@ const IndicesManagement = () => {
                                             }`}
                                     >
                                         {hasMinimumInvestment
-                                            ? `Min. Investment: ₹${Number(index.minimumInvestment).toLocaleString('en-IN')}`
-                                            : 'Min. Investment: Not set'}
+                                            ? `Min. Investment ₹${Number(index?.minimumInvestment).toLocaleString('en-IN')}`
+                                            : 'Min. Investment Not set'}
                                     </p>
                                 </div>
 
                                 <div className="mb-4 flex items-center space-x-2 rounded-lg px-3 py-2 border bg-blue-50 border-blue-200">
                                     <span className="text-sm font-semibold text-blue-700">
-                                        Period: {Number(index.lockPeriodDays || 0) > 0 ? `${Number(index.lockPeriodDays)} Days` : 'Not set'}
+                                        Period:{' '}
+                                        {Number(index?.lockPeriodDays || 0) > 0
+                                            ? `${Number(index?.lockPeriodDays)} Days`
+                                            : 'Not set'}
                                     </span>
                                 </div>
 
@@ -623,7 +687,7 @@ const IndicesManagement = () => {
                                     </button>
 
                                     <button
-                                        onClick={() => setDeleteModal(index._id)}
+                                        onClick={() => setDeleteModal(index?._id)}
                                         className="flex-1 bg-red-50 hover:bg-red-100 text-red-600 py-2 rounded-lg font-medium transition flex items-center justify-center space-x-2"
                                     >
                                         <Trash2 size={16} />
@@ -643,11 +707,7 @@ const IndicesManagement = () => {
                             <h3 className="text-2xl font-bold text-gray-900">
                                 {editingIndex ? 'Edit Index' : 'Add New Index'}
                             </h3>
-
-                            <button
-                                onClick={handleCloseModal}
-                                className="p-2 hover:bg-gray-100 rounded-lg transition"
-                            >
+                            <button onClick={handleCloseModal} className="p-2 hover:bg-gray-100 rounded-lg transition">
                                 <X size={24} />
                             </button>
                         </div>
@@ -693,8 +753,8 @@ const IndicesManagement = () => {
                                 >
                                     <option value="">Select Category</option>
                                     {categories.map((cat) => (
-                                        <option key={cat._id} value={cat._id}>
-                                            {cat.name}
+                                        <option key={cat?._id || cat?.id} value={cat?._id || cat?.id}>
+                                            {cat?.name}
                                         </option>
                                     ))}
                                 </select>
@@ -715,7 +775,7 @@ const IndicesManagement = () => {
                                 />
                             </div>
 
-                            <div className="grid grid-cols-3 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                                         High Value <span className="text-red-500">*</span>
@@ -748,7 +808,7 @@ const IndicesManagement = () => {
 
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                        Default Daily Return (%)
+                                        Default Daily Return
                                     </label>
                                     <input
                                         type="number"
@@ -765,7 +825,7 @@ const IndicesManagement = () => {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-3 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                                         Previous Close <span className="text-red-500">*</span>
@@ -796,13 +856,13 @@ const IndicesManagement = () => {
                                         required
                                     />
                                     <p className="text-xs text-gray-500 mt-2">
-                                        Each index has its own minimum investment amount.
+                                        Users can invest any amount above this minimum, based on available wallet balance.
                                     </p>
                                 </div>
 
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                        Period (Days) <span className="text-red-500">*</span>
+                                        Period Days <span className="text-red-500">*</span>
                                     </label>
                                     <input
                                         type="number"
@@ -845,7 +905,7 @@ const IndicesManagement = () => {
                                 ) : null}
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                                         Market Cap
@@ -878,7 +938,7 @@ const IndicesManagement = () => {
                                     Description
                                 </label>
                                 <textarea
-                                    rows="3"
+                                    rows={3}
                                     value={formData.description}
                                     onChange={(e) => handleChange('description', e.target.value)}
                                     className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
@@ -895,6 +955,7 @@ const IndicesManagement = () => {
                                             <p className="text-sm text-gray-600">Show in Top Indices</p>
                                         </div>
                                     </div>
+
                                     <label className="relative inline-flex items-center cursor-pointer">
                                         <input
                                             type="checkbox"
@@ -902,15 +963,16 @@ const IndicesManagement = () => {
                                             onChange={(e) => handleChange('isFeatured', e.target.checked)}
                                             className="sr-only peer"
                                         />
-                                        <div className="w-14 h-7 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-yellow-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-yellow-500"></div>
+                                        <div className="w-14 h-7 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-yellow-300 rounded-full peer after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:border-gray-300 after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-yellow-500 peer-checked:after:translate-x-full" />
                                     </label>
                                 </div>
 
                                 <div className="flex items-center justify-between p-4 bg-blue-50 border border-blue-200 rounded-xl">
                                     <div>
                                         <p className="font-semibold text-gray-900">Active Status</p>
-                                        <p className="text-sm text-gray-600">Visible in app & APIs</p>
+                                        <p className="text-sm text-gray-600">Visible in app APIs</p>
                                     </div>
+
                                     <label className="relative inline-flex items-center cursor-pointer">
                                         <input
                                             type="checkbox"
@@ -918,7 +980,7 @@ const IndicesManagement = () => {
                                             onChange={(e) => handleChange('isActive', e.target.checked)}
                                             className="sr-only peer"
                                         />
-                                        <div className="w-14 h-7 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-blue-500"></div>
+                                        <div className="w-14 h-7 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:border-gray-300 after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-blue-500 peer-checked:after:translate-x-full" />
                                     </label>
                                 </div>
                             </div>
@@ -930,9 +992,14 @@ const IndicesManagement = () => {
                                     className="flex-1 bg-green-500 hover:bg-green-600 disabled:opacity-50 text-white py-3 rounded-xl font-semibold transition"
                                 >
                                     {actionLoading
-                                        ? (editingIndex ? 'Updating...' : 'Creating...')
-                                        : (editingIndex ? 'Update Index' : 'Create Index')}
+                                        ? editingIndex
+                                            ? 'Updating...'
+                                            : 'Creating...'
+                                        : editingIndex
+                                            ? 'Update Index'
+                                            : 'Create Index'}
                                 </button>
+
                                 <button
                                     type="button"
                                     onClick={handleCloseModal}
@@ -952,10 +1019,15 @@ const IndicesManagement = () => {
                         <div className="bg-red-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                             <AlertCircle className="text-red-600" size={32} />
                         </div>
-                        <h3 className="text-2xl font-bold text-gray-900 text-center mb-2">Delete Index?</h3>
+
+                        <h3 className="text-2xl font-bold text-gray-900 text-center mb-2">
+                            Delete Index?
+                        </h3>
+
                         <p className="text-gray-600 text-center mb-6">
                             This action cannot be undone. The index will be permanently removed from the system.
                         </p>
+
                         <div className="flex space-x-3">
                             <button
                                 onClick={handleDelete}
@@ -963,6 +1035,7 @@ const IndicesManagement = () => {
                             >
                                 Delete
                             </button>
+
                             <button
                                 onClick={() => setDeleteModal(null)}
                                 className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 py-3 rounded-xl font-semibold transition"

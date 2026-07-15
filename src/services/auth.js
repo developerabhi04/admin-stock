@@ -1,10 +1,42 @@
 import { createSlice } from '@reduxjs/toolkit';
 
+const getStoredToken = () => {
+    try {
+        return localStorage.getItem('adminToken');
+    } catch (error) {
+        console.error('❌ Error reading adminToken:', error);
+        return null;
+    }
+};
+
+const getStoredAdmin = () => {
+    try {
+        const adminData = localStorage.getItem('adminData');
+        return adminData ? JSON.parse(adminData) : null;
+    } catch (error) {
+        console.error('❌ Error reading adminData:', error);
+        localStorage.removeItem('adminData');
+        return null;
+    }
+};
+
+const clearStoredAdminSession = () => {
+    try {
+        localStorage.removeItem('adminToken');
+        localStorage.removeItem('adminData');
+    } catch (error) {
+        console.error('❌ Error clearing admin session:', error);
+    }
+};
+
+const initialToken = getStoredToken();
+const initialAdmin = getStoredAdmin();
+
 const initialState = {
-    admin: null,
-    token: localStorage.getItem('adminToken') || null,
-    isAuthenticated: !!localStorage.getItem('adminToken'),
-    loading: true,
+    admin: initialAdmin,
+    token: initialToken,
+    isAuthenticated: !!initialToken,
+    loading: false,
 };
 
 const authSlice = createSlice({
@@ -17,9 +49,12 @@ const authSlice = createSlice({
             state.isAuthenticated = true;
             state.loading = false;
 
-            // ✅ Store in localStorage
-            localStorage.setItem('adminToken', action.payload.token);
-            localStorage.setItem('adminData', JSON.stringify(action.payload.admin));
+            try {
+                localStorage.setItem('adminToken', action.payload.token);
+                localStorage.setItem('adminData', JSON.stringify(action.payload.admin));
+            } catch (error) {
+                console.error('❌ Error saving admin session:', error);
+            }
 
             console.log('✅ Admin logged in:', action.payload.admin);
         },
@@ -30,28 +65,23 @@ const authSlice = createSlice({
             state.isAuthenticated = false;
             state.loading = false;
 
-            localStorage.removeItem('adminToken');
-            localStorage.removeItem('adminData');
-
+            clearStoredAdminSession();
             console.log('🚪 Admin logged out');
         },
 
         loadAdmin: (state) => {
-            const token = localStorage.getItem('adminToken');
-            const adminData = localStorage.getItem('adminData');
+            const token = getStoredToken();
+            const admin = getStoredAdmin();
 
-            if (token && adminData) {
-                try {
-                    state.token = token;
-                    state.admin = JSON.parse(adminData);
-                    state.isAuthenticated = true;
-
-                    console.log('✅ Admin loaded from storage:', state.admin);
-                } catch (error) {
-                    console.error('❌ Error loading admin data:', error);
-                    localStorage.removeItem('adminToken');
-                    localStorage.removeItem('adminData');
-                }
+            if (token && admin) {
+                state.token = token;
+                state.admin = admin;
+                state.isAuthenticated = true;
+                console.log('✅ Admin loaded from storage:', admin);
+            } else {
+                state.admin = null;
+                state.token = null;
+                state.isAuthenticated = false;
             }
 
             state.loading = false;
