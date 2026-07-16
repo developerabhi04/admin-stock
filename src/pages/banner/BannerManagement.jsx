@@ -5,6 +5,7 @@ import { adminAPI } from '../../services/api';
 import PageHeader from '../paymentmanager/PageHeader';
 import Loading from '../../components/Loader';
 
+
 const BannerManagement = () => {
     const [banners, setBanners] = useState([]);
     const [loading, setLoading] = useState(true);
