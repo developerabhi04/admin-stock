@@ -485,8 +485,8 @@ const IndicesManagement = () => {
                             <button
                                 onClick={() => dispatch(setFilters({ category: '' }))}
                                 className={`px-4 py-2 rounded-lg text-sm font-medium transition ${!filters?.category
-                                    ? 'bg-green-500 text-white'
-                                    : 'bg-gray-50 hover:bg-gray-100 text-gray-700'
+                                        ? 'bg-green-500 text-white'
+                                        : 'bg-gray-50 hover:bg-gray-100 text-gray-700'
                                     }`}
                             >
                                 All Categories
@@ -497,8 +497,8 @@ const IndicesManagement = () => {
                                     key={cat?._id || cat?.id}
                                     onClick={() => filterByCategorySlug(cat?.slug || cat?.name || '')}
                                     className={`px-4 py-2 rounded-lg text-sm font-medium transition ${filters?.category === (cat?.slug || cat?.name)
-                                        ? 'bg-blue-500 text-white'
-                                        : 'bg-gray-50 hover:bg-gray-100 text-gray-700'
+                                            ? 'bg-blue-500 text-white'
+                                            : 'bg-gray-50 hover:bg-gray-100 text-gray-700'
                                         }`}
                                 >
                                     {cat?.name}
@@ -508,8 +508,8 @@ const IndicesManagement = () => {
                             <button
                                 onClick={() => dispatch(setFilters({ featured: true }))}
                                 className={`px-4 py-2 rounded-lg text-sm font-medium transition ${filters?.featured === true
-                                    ? 'bg-yellow-500 text-white'
-                                    : 'bg-gray-50 hover:bg-gray-100 text-gray-700'
+                                        ? 'bg-yellow-500 text-white'
+                                        : 'bg-gray-50 hover:bg-gray-100 text-gray-700'
                                     }`}
                             >
                                 Featured
@@ -590,8 +590,8 @@ const IndicesManagement = () => {
                                     <button
                                         onClick={() => handleToggleFeatured(index)}
                                         className={`p-2 rounded-lg transition ${index?.isFeatured
-                                            ? 'bg-yellow-100 text-yellow-600'
-                                            : 'bg-gray-100 text-gray-400 hover:bg-yellow-100 hover:text-yellow-600'
+                                                ? 'bg-yellow-100 text-yellow-600'
+                                                : 'bg-gray-100 text-gray-400 hover:bg-yellow-100 hover:text-yellow-600'
                                             }`}
                                     >
                                         <Star size={18} className={index?.isFeatured ? 'fill-current' : ''} />
@@ -616,8 +616,8 @@ const IndicesManagement = () => {
 
                                 <div
                                     className={`mb-3 flex items-center space-x-2 rounded-lg px-3 py-2 border ${hasMinimumInvestment
-                                        ? 'bg-emerald-50 border-emerald-200'
-                                        : 'bg-orange-50 border-orange-200'
+                                            ? 'bg-emerald-50 border-emerald-200'
+                                            : 'bg-orange-50 border-orange-200'
                                         }`}
                                 >
                                     <Wallet
