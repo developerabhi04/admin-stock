@@ -117,14 +117,15 @@ export const adminAPI = {
 
   getMarketStats: () => api.get('/admin/market/stats'),
 
+
+  // inside adminAPI object in api.js — replace these two lines
   getAllBanners: () => api.get('/banners'),
-  uploadBanner: (formData) =>
-    api.post('/banners', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    }),
+  uploadBanner: (data) => api.post('/banners', data),
   deleteBanner: (bannerId) => api.delete(`/banners/${bannerId}`),
   toggleBannerStatus: (bannerId) => api.patch(`/banners/${bannerId}/toggle`),
-  reorderBanners: (banners) => api.post('/banners/reorder', { banners }),
+
+
+
 
   sendNotificationToAll: (data) => api.post('/notifications/admin/send-all', data),
   sendNotificationToUser: (userId, data) =>
