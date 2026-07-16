@@ -197,7 +197,7 @@ const IndicesManagement = () => {
     const validateForm = () => {
         if (
             !formData.name.trim() ||
-            formData.symbol.trim() ||
+            !formData.symbol.trim() ||
             !formData.category ||
             formData.currentValue === '' ||
             formData.highValue === '' ||
@@ -808,25 +808,6 @@ const IndicesManagement = () => {
 
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                        Previous Close <span className="text-red-500">*</span>
-                                    </label>
-                                    <input
-                                        type="number"
-                                        step="0.01"
-                                        value={formData.previousClose}
-                                        onChange={(e) => handleChange('previousClose', e.target.value)}
-                                        className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
-                                        placeholder="19390.00"
-                                        required
-                                    />
-                                </div>
-
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-
-                                <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
                                         Default Daily Return
                                     </label>
                                     <input
@@ -841,6 +822,23 @@ const IndicesManagement = () => {
                                     <p className="text-xs text-gray-500 mt-2">
                                         Shows fixed daily return in the app and can be used as default return.
                                     </p>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        Previous Close <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        value={formData.previousClose}
+                                        onChange={(e) => handleChange('previousClose', e.target.value)}
+                                        className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
+                                        placeholder="19390.00"
+                                        required
+                                    />
                                 </div>
 
                                 <div>
