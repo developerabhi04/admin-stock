@@ -19,6 +19,8 @@ import {
     RefreshCw,
     X,
     AlertCircle,
+    TrendingUp,
+    TrendingDown,
     Globe,
     Coins,
     Wallet,
@@ -29,6 +31,7 @@ const initialFormData = {
     name: '',
     symbol: '',
     category: '',
+    currentValue: '',
     highValue: '',
     lowValue: '',
     previousClose: '',
@@ -156,6 +159,7 @@ const IndicesManagement = () => {
                 name: index?.name || '',
                 symbol: index?.symbol || '',
                 category: index?.categoryId || index?.category?._id || index?.category?.id || '',
+                currentValue: index?.currentValue ?? '',
                 highValue: index?.highValue ?? '',
                 lowValue: index?.lowValue ?? '',
                 previousClose: index?.previousClose ?? '',
@@ -173,6 +177,7 @@ const IndicesManagement = () => {
             setEditingIndex(null);
             setFormData(initialFormData);
         }
+
         setShowModal(true);
     };
 
@@ -192,8 +197,9 @@ const IndicesManagement = () => {
     const validateForm = () => {
         if (
             !formData.name.trim() ||
-            !formData.symbol.trim() ||
+            formData.symbol.trim() ||
             !formData.category ||
+            formData.currentValue === '' ||
             formData.highValue === '' ||
             formData.lowValue === '' ||
             formData.previousClose === '' ||
@@ -218,6 +224,7 @@ const IndicesManagement = () => {
         name: formData.name.trim(),
         symbol: formData.symbol.trim().toUpperCase(),
         category: formData.category,
+        currentValue: toNumberOrZero(formData.currentValue),
         highValue: toNumberOrZero(formData.highValue),
         lowValue: toNumberOrZero(formData.lowValue),
         previousClose: toNumberOrZero(formData.previousClose),
@@ -285,6 +292,7 @@ const IndicesManagement = () => {
                 name: index?.name || '',
                 symbol: index?.symbol || '',
                 category: index?.categoryId || index?.category?._id || index?.category?.id || '',
+                currentValue: toNumberOrZero(index?.currentValue),
                 highValue: toNumberOrZero(index?.highValue),
                 lowValue: toNumberOrZero(index?.lowValue),
                 previousClose: toNumberOrZero(index?.previousClose),
@@ -598,6 +606,32 @@ const IndicesManagement = () => {
                                     </button>
                                 </div>
 
+                                <div className="mb-4">
+                                    <p className="text-3xl font-bold text-gray-900">
+                                        {Number(index?.currentValue || 0).toLocaleString()}
+                                    </p>
+
+                                    <div className="flex items-center space-x-2 mt-1">
+                                        {Number(index?.changePercent || 0) > 0 ? (
+                                            <span className="text-green-600 text-sm font-semibold flex items-center">
+                                                <TrendingUp size={14} className="mr-1" />
+                                                {Number(index?.changePercent || 0).toFixed(2)}%
+                                            </span>
+                                        ) : Number(index?.changePercent || 0) < 0 ? (
+                                            <span className="text-red-600 text-sm font-semibold flex items-center">
+                                                <TrendingDown size={14} className="mr-1" />
+                                                {Math.abs(Number(index?.changePercent || 0)).toFixed(2)}%
+                                            </span>
+                                        ) : (
+                                            <span className="text-gray-500 text-sm">0.00%</span>
+                                        )}
+
+                                        <span className="text-gray-500 text-sm">
+                                            {Number(index?.change || 0).toFixed(2)}
+                                        </span>
+                                    </div>
+                                </div>
+
                                 <div className="mb-4 flex items-center justify-between">
                                     <span
                                         className={`inline-block px-3 py-1 text-xs font-semibold rounded-full capitalize ${getCategoryBadge(
@@ -724,6 +758,21 @@ const IndicesManagement = () => {
                                         </option>
                                     ))}
                                 </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                    Current Value <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    value={formData.currentValue}
+                                    onChange={(e) => handleChange('currentValue', e.target.value)}
+                                    className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
+                                    placeholder="19435.30"
+                                    required
+                                />
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
