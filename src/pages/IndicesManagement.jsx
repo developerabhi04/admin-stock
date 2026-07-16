@@ -493,8 +493,8 @@ const IndicesManagement = () => {
                             <button
                                 onClick={() => dispatch(setFilters({ category: '' }))}
                                 className={`px-4 py-2 rounded-lg text-sm font-medium transition ${!filters?.category
-                                        ? 'bg-green-500 text-white'
-                                        : 'bg-gray-50 hover:bg-gray-100 text-gray-700'
+                                    ? 'bg-green-500 text-white'
+                                    : 'bg-gray-50 hover:bg-gray-100 text-gray-700'
                                     }`}
                             >
                                 All Categories
@@ -505,8 +505,8 @@ const IndicesManagement = () => {
                                     key={cat?._id || cat?.id}
                                     onClick={() => filterByCategorySlug(cat?.slug || cat?.name || '')}
                                     className={`px-4 py-2 rounded-lg text-sm font-medium transition ${filters?.category === (cat?.slug || cat?.name)
-                                            ? 'bg-blue-500 text-white'
-                                            : 'bg-gray-50 hover:bg-gray-100 text-gray-700'
+                                        ? 'bg-blue-500 text-white'
+                                        : 'bg-gray-50 hover:bg-gray-100 text-gray-700'
                                         }`}
                                 >
                                     {cat?.name}
@@ -516,8 +516,8 @@ const IndicesManagement = () => {
                             <button
                                 onClick={() => dispatch(setFilters({ featured: true }))}
                                 className={`px-4 py-2 rounded-lg text-sm font-medium transition ${filters?.featured === true
-                                        ? 'bg-yellow-500 text-white'
-                                        : 'bg-gray-50 hover:bg-gray-100 text-gray-700'
+                                    ? 'bg-yellow-500 text-white'
+                                    : 'bg-gray-50 hover:bg-gray-100 text-gray-700'
                                     }`}
                             >
                                 Featured
@@ -598,8 +598,8 @@ const IndicesManagement = () => {
                                     <button
                                         onClick={() => handleToggleFeatured(index)}
                                         className={`p-2 rounded-lg transition ${index?.isFeatured
-                                                ? 'bg-yellow-100 text-yellow-600'
-                                                : 'bg-gray-100 text-gray-400 hover:bg-yellow-100 hover:text-yellow-600'
+                                            ? 'bg-yellow-100 text-yellow-600'
+                                            : 'bg-gray-100 text-gray-400 hover:bg-yellow-100 hover:text-yellow-600'
                                             }`}
                                     >
                                         <Star size={18} className={index?.isFeatured ? 'fill-current' : ''} />
@@ -650,8 +650,8 @@ const IndicesManagement = () => {
 
                                 <div
                                     className={`mb-3 flex items-center space-x-2 rounded-lg px-3 py-2 border ${hasMinimumInvestment
-                                            ? 'bg-emerald-50 border-emerald-200'
-                                            : 'bg-orange-50 border-orange-200'
+                                        ? 'bg-emerald-50 border-emerald-200'
+                                        : 'bg-orange-50 border-orange-200'
                                         }`}
                                 >
                                     <Wallet
@@ -808,6 +808,25 @@ const IndicesManagement = () => {
 
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        Previous Close <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        value={formData.previousClose}
+                                        onChange={(e) => handleChange('previousClose', e.target.value)}
+                                        className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
+                                        placeholder="19390.00"
+                                        required
+                                    />
+                                </div>
+
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
                                         Default Daily Return
                                     </label>
                                     <input
@@ -822,23 +841,6 @@ const IndicesManagement = () => {
                                     <p className="text-xs text-gray-500 mt-2">
                                         Shows fixed daily return in the app and can be used as default return.
                                     </p>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                        Previous Close <span className="text-red-500">*</span>
-                                    </label>
-                                    <input
-                                        type="number"
-                                        step="0.01"
-                                        value={formData.previousClose}
-                                        onChange={(e) => handleChange('previousClose', e.target.value)}
-                                        className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
-                                        placeholder="19390.00"
-                                        required
-                                    />
                                 </div>
 
                                 <div>
