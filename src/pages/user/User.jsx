@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchUsers, setFilters } from '../../store/slices/usersSlice';
+import { fetchUsers, fetchUserStats, setFilters } from '../../store/slices/usersSlice';
 import { useNavigate } from 'react-router-dom';
 import { adminAPI } from '../../services/api';
 import {
@@ -17,12 +17,13 @@ import {
   Bell,
   Loader,
   CheckCircle,
-  Award,
   TrendingDown,
   Activity,
   CalendarDays,
   Phone,
   UserCircle2,
+  ShieldCheck,
+  Clock3,
 } from 'lucide-react';
 import Loading from '../../components/Loader';
 
@@ -35,11 +36,10 @@ const Users = () => {
 
   const {
     users = [],
-    loading,
+    listStatus,
+    stats,
     totalUsers = 0,
     totalWalletBalance = 0,
-    totalBonusBalance = 0,
-    grandTotal = 0,
     totalWithdrawals = 0,
     pendingWithdrawals = 0,
     filters = {},
@@ -63,31 +63,41 @@ const Users = () => {
       fetchUsers({
         page: 1,
         limit: 20,
-        ...filters,
+        search: filters.search || '',
+        sortBy: filters.sortBy || 'createdAt',
+        sortOrder: filters.sortOrder || 'desc',
       })
     );
-  }, [dispatch, filters]);
+  }, [dispatch, filters.search, filters.sortBy, filters.sortOrder]);
 
-  const verifiedUsers = useMemo(
+  useEffect(() => {
+    dispatch(fetchUserStats());
+  }, [dispatch]);
+
+  const verifiedUsersOnPage = useMemo(
     () => users.filter((user) => user.isVerified).length,
     [users]
   );
 
-  const activeUsers = useMemo(
+  const activeUsersOnPage = useMemo(
     () => users.filter((user) => user.isActive !== false).length,
     [users]
   );
 
+  const verifiedUsersOverall = Number(stats?.verifiedUsers || 0);
+  const kycPendingUsers = Number(stats?.kycPendingUsers || 0);
+  const avgWalletBalance = Number(stats?.avgWalletBalance || 0);
+
   const handleSearch = (e) => {
     e.preventDefault();
-    dispatch(setFilters({ search: searchTerm, page: 1 }));
+    dispatch(setFilters({ search: searchTerm, sortBy: filters.sortBy, sortOrder: filters.sortOrder }));
   };
 
   const handleSort = (field) => {
     const newOrder =
       filters.sortBy === field && filters.sortOrder === 'desc' ? 'asc' : 'desc';
 
-    dispatch(setFilters({ sortBy: field, sortOrder: newOrder, page: 1 }));
+    dispatch(setFilters({ sortBy: field, sortOrder: newOrder, search: filters.search || '' }));
   };
 
   const handleRefresh = () => {
@@ -95,9 +105,12 @@ const Users = () => {
       fetchUsers({
         page: 1,
         limit: 20,
-        ...filters,
+        search: filters.search || '',
+        sortBy: filters.sortBy || 'createdAt',
+        sortOrder: filters.sortOrder || 'desc',
       })
     );
+    dispatch(fetchUserStats());
   };
 
   const handleSendNotification = (user = null) => {
@@ -169,11 +182,11 @@ const Users = () => {
     alert('Export functionality coming soon!');
   };
 
-  if (loading) {
+  if (listStatus === 'loading') {
     return <Loading message="Loading all users..." />;
   }
 
-  if (error) {
+  if (listStatus === 'failed') {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center px-4">
         <div className="mb-6 rounded-full bg-red-50 p-6">
@@ -194,19 +207,17 @@ const Users = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-6">
+    <div className="min-h-screen bg-gray-50 p-6">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-3xl font-bold text-transparent">
-            Users Management
-          </h1>
+          <h1 className="text-3xl font-bold text-gray-900">Users Management</h1>
           <p className="mt-1 text-gray-600">{totalUsers} registered users</p>
         </div>
 
         <div className="flex items-center gap-3">
           <button
             onClick={() => handleSendNotification(null)}
-            className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-500 to-purple-600 px-4 py-2.5 font-semibold text-white shadow-lg transition hover:from-purple-600 hover:to-purple-700"
+            className="flex items-center gap-2 rounded-xl bg-purple-600 px-4 py-2.5 font-semibold text-white shadow-sm transition hover:bg-purple-700"
             type="button"
           >
             <Bell size={18} />
@@ -215,17 +226,17 @@ const Users = () => {
 
           <button
             onClick={handleRefresh}
-            disabled={loading}
-            className="flex items-center gap-2 rounded-xl border-2 border-gray-200 bg-white px-4 py-2.5 font-semibold text-gray-700 transition hover:bg-gray-50 disabled:opacity-50"
+            disabled={listStatus === 'loading'}
+            className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 font-semibold text-gray-700 transition hover:bg-gray-50 disabled:opacity-50"
             type="button"
           >
-            <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
+            <RefreshCw size={18} className={listStatus === 'loading' ? 'animate-spin' : ''} />
             Refresh
           </button>
 
           <button
             onClick={exportToCSV}
-            className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-green-500 to-green-600 px-4 py-2.5 font-semibold text-white shadow-lg transition hover:from-green-600 hover:to-green-700"
+            className="flex items-center gap-2 rounded-xl bg-green-600 px-4 py-2.5 font-semibold text-white shadow-sm transition hover:bg-green-700"
             type="button"
           >
             <Download size={18} />
@@ -235,7 +246,7 @@ const Users = () => {
       </div>
 
       <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-xl border-2 border-gray-100 bg-white p-6 shadow-lg transition hover:shadow-xl">
+        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
           <div className="mb-4 flex items-center justify-between">
             <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-100">
               <UsersIcon className="text-blue-600" size={24} />
@@ -244,10 +255,10 @@ const Users = () => {
           </div>
           <p className="mb-1 text-sm text-gray-600">Total Users</p>
           <p className="text-3xl font-bold text-gray-900">{totalUsers}</p>
-          <p className="mt-2 text-xs text-gray-500">{activeUsers} active in current page data</p>
+          <p className="mt-2 text-xs text-gray-500">{activeUsersOnPage} active in current page</p>
         </div>
 
-        <div className="rounded-xl border-2 border-gray-100 bg-white p-6 shadow-lg transition hover:shadow-xl">
+        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
           <div className="mb-4 flex items-center justify-between">
             <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-green-100">
               <Wallet className="text-green-600" size={24} />
@@ -259,24 +270,24 @@ const Users = () => {
           <p className="mt-2 text-xs text-gray-500">{formatCurrency(totalWalletBalance)}</p>
         </div>
 
-        <div className="rounded-xl border-2 border-gray-100 bg-white p-6 shadow-lg transition hover:shadow-xl">
+        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
           <div className="mb-4 flex items-center justify-between">
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-purple-100">
-              <Award className="text-purple-600" size={24} />
+            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-indigo-100">
+              <ShieldCheck className="text-indigo-600" size={24} />
             </div>
-            <CheckCircle className="text-purple-500" size={20} />
+            <CheckCircle className="text-indigo-500" size={20} />
           </div>
-          <p className="mb-1 text-sm text-gray-600">Bonus Balance</p>
-          <p className="text-3xl font-bold text-purple-600">{formatCompactLakh(totalBonusBalance)}</p>
-          <p className="mt-2 text-xs text-gray-500">{verifiedUsers} verified in current page data</p>
+          <p className="mb-1 text-sm text-gray-600">Verified Users</p>
+          <p className="text-3xl font-bold text-indigo-600">{verifiedUsersOverall}</p>
+          <p className="mt-2 text-xs text-gray-500">{verifiedUsersOnPage} verified in current page</p>
         </div>
 
-        <div className="rounded-xl border-2 border-gray-100 bg-white p-6 shadow-lg transition hover:shadow-xl">
+        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
           <div className="mb-4 flex items-center justify-between">
             <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-orange-100">
               <TrendingDown className="text-orange-600" size={24} />
             </div>
-            <AlertCircle className="text-orange-500" size={20} />
+            <Clock3 className="text-orange-500" size={20} />
           </div>
           <p className="mb-1 text-sm text-gray-600">Pending Withdrawals</p>
           <p className="text-3xl font-bold text-orange-600">{formatCompactLakh(pendingWithdrawals)}</p>
@@ -284,31 +295,31 @@ const Users = () => {
         </div>
       </div>
 
-      <div className="mb-8 rounded-xl border-2 border-gray-100 bg-white p-6 shadow-lg">
+      <div className="mb-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         <div className="grid grid-cols-2 gap-6 md:grid-cols-4">
           <div className="text-center">
-            <p className="text-2xl font-bold text-gray-900">{formatCompactLakh(grandTotal)}</p>
-            <p className="text-xs text-gray-500">Grand Total</p>
-          </div>
-
-          <div className="text-center">
-            <p className="text-2xl font-bold text-green-600">{formatCompactLakh(totalWalletBalance)}</p>
+            <p className="text-2xl font-bold text-gray-900">{formatCompactLakh(totalWalletBalance)}</p>
             <p className="text-xs text-gray-500">Wallet Pool</p>
           </div>
 
           <div className="text-center">
-            <p className="text-2xl font-bold text-purple-600">{formatCompactLakh(totalBonusBalance)}</p>
-            <p className="text-xs text-gray-500">Bonus Pool</p>
+            <p className="text-2xl font-bold text-indigo-600">{verifiedUsersOverall}</p>
+            <p className="text-xs text-gray-500">Verified Accounts</p>
           </div>
 
           <div className="text-center">
-            <p className="text-2xl font-bold text-red-600">{formatCompactLakh(totalWithdrawals)}</p>
-            <p className="text-xs text-gray-500">Total Withdrawn</p>
+            <p className="text-2xl font-bold text-amber-600">{kycPendingUsers}</p>
+            <p className="text-xs text-gray-500">KYC Pending</p>
+          </div>
+
+          <div className="text-center">
+            <p className="text-2xl font-bold text-emerald-600">{formatCompactLakh(avgWalletBalance)}</p>
+            <p className="text-xs text-gray-500">Average Wallet</p>
           </div>
         </div>
       </div>
 
-      <div className="mb-8 rounded-xl border-2 border-gray-100 bg-white p-6 shadow-lg">
+      <div className="mb-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-4 md:flex-row">
           <form onSubmit={handleSearch} className="flex flex-1 gap-3">
             <div className="relative flex-1">
@@ -320,14 +331,14 @@ const Users = () => {
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search by name, phone, or user ID..."
-                className="w-full rounded-xl border-2 border-gray-200 py-3 pl-12 pr-4 transition focus:border-transparent focus:ring-2 focus:ring-blue-500"
+                placeholder="Search by name or phone..."
+                className="w-full rounded-xl border border-gray-200 py-3 pl-12 pr-4 transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
               />
             </div>
 
             <button
               type="submit"
-              className="whitespace-nowrap rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-3 font-semibold text-white transition hover:from-blue-600 hover:to-blue-700"
+              className="whitespace-nowrap rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white transition hover:bg-blue-700"
             >
               Search
             </button>
@@ -348,7 +359,7 @@ const Users = () => {
             <div className="flex flex-wrap gap-3">
               <button
                 onClick={() => handleSort('createdAt')}
-                className="rounded-lg border-2 border-gray-200 bg-gray-50 px-4 py-2 font-medium transition hover:bg-gray-100"
+                className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 font-medium transition hover:bg-gray-100"
                 type="button"
               >
                 📅 By Date
@@ -356,7 +367,7 @@ const Users = () => {
 
               <button
                 onClick={() => handleSort('walletBalance')}
-                className="rounded-lg border-2 border-gray-200 bg-gray-50 px-4 py-2 font-medium transition hover:bg-gray-100"
+                className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 font-medium transition hover:bg-gray-100"
                 type="button"
               >
                 💰 By Balance
@@ -364,7 +375,7 @@ const Users = () => {
 
               <button
                 onClick={() => handleSort('fullName')}
-                className="rounded-lg border-2 border-gray-200 bg-gray-50 px-4 py-2 font-medium transition hover:bg-gray-100"
+                className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 font-medium transition hover:bg-gray-100"
                 type="button"
               >
                 👤 By Name
@@ -372,7 +383,7 @@ const Users = () => {
 
               <button
                 onClick={() => handleSort('isVerified')}
-                className="rounded-lg border-2 border-gray-200 bg-gray-50 px-4 py-2 font-medium transition hover:bg-gray-100"
+                className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 font-medium transition hover:bg-gray-100"
                 type="button"
               >
                 ✅ By Verification
@@ -383,7 +394,7 @@ const Users = () => {
       </div>
 
       {!users || users.length === 0 ? (
-        <div className="rounded-xl border-2 border-gray-100 bg-white p-12 text-center shadow-lg">
+        <div className="rounded-xl border border-gray-200 bg-white p-12 text-center shadow-sm">
           <UsersIcon className="mx-auto mb-4 text-gray-400" size={64} />
           <h3 className="mb-2 text-2xl font-bold text-gray-800">No Users Found</h3>
           <p className="mb-6 text-gray-500">
@@ -394,7 +405,7 @@ const Users = () => {
             <button
               onClick={() => {
                 setSearchTerm('');
-                dispatch(setFilters({ search: '', page: 1 }));
+                dispatch(setFilters({ search: '', sortBy: filters.sortBy, sortOrder: filters.sortOrder }));
               }}
               className="rounded-xl bg-blue-500 px-6 py-3 font-semibold text-white transition hover:bg-blue-600"
               type="button"
@@ -408,11 +419,11 @@ const Users = () => {
           {users.map((user) => (
             <div
               key={user._id}
-              className="overflow-hidden rounded-xl border-2 border-gray-100 bg-white shadow-lg transition-all hover:shadow-2xl"
+              className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-all hover:shadow-md"
             >
-              <div className="bg-gradient-to-br from-blue-500 to-purple-600 p-4 text-white">
+              <div className="bg-blue-600 p-4 text-white">
                 <div className="mb-3 flex items-center gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/20 text-lg font-bold ring-2 ring-white/30 backdrop-blur-sm">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/20 text-lg font-bold ring-2 ring-white/30">
                     {user.fullName?.charAt(0)?.toUpperCase() || 'U'}
                   </div>
 
@@ -426,15 +437,10 @@ const Users = () => {
                   )}
                 </div>
 
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="rounded-lg bg-white/20 p-2 text-center backdrop-blur-sm">
+                <div className="grid grid-cols-1 gap-2">
+                  <div className="rounded-lg bg-white/20 p-2 text-center">
                     <p className="text-xs text-blue-100">Wallet</p>
                     <p className="font-bold">{formatCompactLakh(user.walletBalance || 0)}</p>
-                  </div>
-
-                  <div className="rounded-lg bg-white/20 p-2 text-center backdrop-blur-sm">
-                    <p className="text-xs text-blue-100">Bonus</p>
-                    <p className="font-bold">{formatCompactLakh(user.bonusBalance || 0)}</p>
                   </div>
                 </div>
               </div>
@@ -446,7 +452,9 @@ const Users = () => {
                       <Phone size={16} />
                       <span className="text-xs font-medium">Phone</span>
                     </div>
-                    <p className="font-semibold text-gray-900">{user.phoneNumber || '-'}</p>
+                    <p className="font-semibold text-gray-900">
+                      {user.countryCode || ''} {user.phoneNumber || '-'}
+                    </p>
                   </div>
 
                   <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
@@ -490,13 +498,24 @@ const Users = () => {
                   >
                     {user.isActive !== false ? 'Active' : 'Inactive'}
                   </span>
+
+                  <span
+                    className={`rounded-full px-3 py-1 text-xs font-semibold ${user.kycStatus === 'verified'
+                      ? 'bg-emerald-100 text-emerald-700'
+                      : user.kycStatus === 'rejected'
+                        ? 'bg-red-100 text-red-700'
+                        : 'bg-yellow-100 text-yellow-700'
+                      }`}
+                  >
+                    KYC: {user.kycStatus || 'pending'}
+                  </span>
                 </div>
               </div>
 
               <div className="flex gap-2 border-t border-gray-200 bg-gray-50 p-3">
                 <button
                   onClick={() => navigate(`/dashboard/users/${user._id}`)}
-                  className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 px-3 py-2 font-medium text-white transition hover:from-blue-600 hover:to-blue-700"
+                  className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-blue-600 px-3 py-2 font-medium text-white transition hover:bg-blue-700"
                   type="button"
                 >
                   <Eye size={16} />
@@ -505,7 +524,7 @@ const Users = () => {
 
                 <button
                   onClick={() => handleSendNotification(user)}
-                  className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-purple-500 to-purple-600 px-3 py-2 font-medium text-white transition hover:from-purple-600 hover:to-purple-700"
+                  className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-purple-600 px-3 py-2 font-medium text-white transition hover:bg-purple-700"
                   type="button"
                 >
                   <Send size={16} />
@@ -518,7 +537,7 @@ const Users = () => {
       )}
 
       {users && users.length > 0 && (
-        <div className="mt-8 flex items-center justify-between rounded-xl border-2 border-gray-100 bg-white px-6 py-4 shadow-lg">
+        <div className="mt-8 flex items-center justify-between rounded-xl border border-gray-200 bg-white px-6 py-4 shadow-sm">
           <p className="text-sm text-gray-600">
             Showing <span className="font-bold text-gray-900">{users.length}</span> of{' '}
             <span className="font-bold text-gray-900">{totalUsers}</span> users
@@ -556,9 +575,9 @@ const Users = () => {
 
             <form onSubmit={handleSubmitNotification} className="space-y-4 p-6">
               {!sendToAll && selectedUser && (
-                <div className="rounded-xl border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-purple-50 p-4">
+                <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-lg font-bold text-white">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-purple-600 text-lg font-bold text-white">
                       {selectedUser.fullName?.charAt(0).toUpperCase()}
                     </div>
                     <div>
@@ -570,7 +589,7 @@ const Users = () => {
               )}
 
               {sendToAll && (
-                <div className="flex items-start gap-3 rounded-xl border-2 border-yellow-200 bg-yellow-50 p-4">
+                <div className="flex items-start gap-3 rounded-xl border border-yellow-200 bg-yellow-50 p-4">
                   <AlertCircle className="mt-0.5 shrink-0 text-yellow-600" size={20} />
                   <div>
                     <p className="font-bold text-yellow-900">Broadcasting to {totalUsers} users</p>
@@ -588,7 +607,7 @@ const Users = () => {
                   onChange={(e) =>
                     setNotificationData((prev) => ({ ...prev, type: e.target.value }))
                   }
-                  className="w-full rounded-xl border-2 border-gray-200 px-4 py-3 transition focus:border-purple-500 focus:ring-2 focus:ring-purple-100"
+                  className="w-full rounded-xl border border-gray-200 px-4 py-3 transition focus:border-purple-500 focus:ring-2 focus:ring-purple-100"
                 >
                   <option value="general">📢 General</option>
                   <option value="payment">💰 Payment</option>
@@ -606,7 +625,7 @@ const Users = () => {
                   onChange={(e) =>
                     setNotificationData((prev) => ({ ...prev, title: e.target.value }))
                   }
-                  className="w-full rounded-xl border-2 border-gray-200 px-4 py-3 transition focus:border-purple-500 focus:ring-2 focus:ring-purple-100"
+                  className="w-full rounded-xl border border-gray-200 px-4 py-3 transition focus:border-purple-500 focus:ring-2 focus:ring-purple-100"
                   placeholder="Enter notification title"
                   maxLength={50}
                   required
@@ -621,7 +640,7 @@ const Users = () => {
                   onChange={(e) =>
                     setNotificationData((prev) => ({ ...prev, message: e.target.value }))
                   }
-                  className="w-full resize-none rounded-xl border-2 border-gray-200 px-4 py-3 transition focus:border-purple-500 focus:ring-2 focus:ring-purple-100"
+                  className="w-full resize-none rounded-xl border border-gray-200 px-4 py-3 transition focus:border-purple-500 focus:ring-2 focus:ring-purple-100"
                   rows="4"
                   placeholder="Enter notification message"
                   maxLength={200}
@@ -631,7 +650,7 @@ const Users = () => {
               </div>
 
               {(notificationData.title || notificationData.message) && (
-                <div className="rounded-xl border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-purple-100 p-4">
+                <div className="rounded-xl border border-purple-200 bg-purple-50 p-4">
                   <p className="mb-3 text-sm font-medium text-purple-700">Preview:</p>
                   <div className="rounded-lg bg-white p-4 shadow-sm">
                     <div className="flex items-start gap-3">
@@ -667,7 +686,7 @@ const Users = () => {
                 <button
                   type="submit"
                   disabled={sendingNotification}
-                  className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-500 to-purple-600 py-3 font-semibold text-white transition hover:from-purple-600 hover:to-purple-700 disabled:opacity-50"
+                  className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-purple-600 py-3 font-semibold text-white transition hover:bg-purple-700 disabled:opacity-50"
                 >
                   {sendingNotification ? (
                     <>

@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchUserDetails, updateUserBalance } from '../../store/slices/usersSlice';
+import {
+    fetchUserDetails,
+    updateUserBalance,
+    resetBalanceUpdateStatus,
+} from '../../store/slices/usersSlice';
 import { ArrowLeft, Wallet } from 'lucide-react';
 import Loading from '../../components/Loader';
 
@@ -44,7 +48,9 @@ const buildPortfolioSummary = (userDetails = {}) => {
 
     const totalPnLPercent =
         backendPortfolio.totalPnLPercent ??
-        (Number(totalInvested || 0) > 0 ? (Number(totalPnL || 0) / Number(totalInvested || 1)) * 100 : 0);
+        (Number(totalInvested || 0) > 0
+            ? (Number(totalPnL || 0) / Number(totalInvested || 1)) * 100
+            : 0);
 
     const todayPnL =
         backendPortfolio.todayPnL ??
@@ -58,7 +64,9 @@ const buildPortfolioSummary = (userDetails = {}) => {
 
     const todayPnLPercent =
         backendPortfolio.todayPnLPercent ??
-        (Number(totalInvested || 0) > 0 ? (Number(todayPnL || 0) / Number(totalInvested || 1)) * 100 : 0);
+        (Number(totalInvested || 0) > 0
+            ? (Number(todayPnL || 0) / Number(totalInvested || 1)) * 100
+            : 0);
 
     return {
         ...backendPortfolio,
@@ -118,11 +126,20 @@ const buildOrdersFromInvestments = (userDetails = {}) => {
             pending: Array.isArray(userDetails.investmentOrders.pending)
                 ? userDetails.investmentOrders.pending
                 : [],
+            active: Array.isArray(userDetails.investmentOrders.active)
+                ? userDetails.investmentOrders.active
+                : [],
+            unlocked: Array.isArray(userDetails.investmentOrders.unlocked)
+                ? userDetails.investmentOrders.unlocked
+                : [],
             completed: Array.isArray(userDetails.investmentOrders.completed)
                 ? userDetails.investmentOrders.completed
                 : [],
             cancelled: Array.isArray(userDetails.investmentOrders.cancelled)
                 ? userDetails.investmentOrders.cancelled
+                : [],
+            all: Array.isArray(userDetails.investmentOrders.all)
+                ? userDetails.investmentOrders.all
                 : [],
         };
     }
@@ -131,7 +148,7 @@ const buildOrdersFromInvestments = (userDetails = {}) => {
 
     const mapped = investments.map((item, index) => ({
         _id: item._id || `order-${index}`,
-        orderId: item.orderId || item._id,
+        orderId: item.orderId || item.orderNumber || item._id,
         type: item.type || item.action || 'buy',
         indexName:
             item.indexName ||
@@ -154,14 +171,15 @@ const buildOrdersFromInvestments = (userDetails = {}) => {
         pending: mapped.filter((item) =>
             ['pending', 'processing', 'initiated'].includes(String(item.status).toLowerCase())
         ),
+        active: mapped.filter((item) => String(item.status).toLowerCase() === 'active'),
+        unlocked: mapped.filter((item) => String(item.status).toLowerCase() === 'unlocked'),
         completed: mapped.filter((item) =>
-            ['completed', 'active', 'approved', 'unlocked', 'closed_reinvested'].includes(
-                String(item.status).toLowerCase()
-            )
+            ['completed', 'approved', 'closed_reinvested'].includes(String(item.status).toLowerCase())
         ),
         cancelled: mapped.filter((item) =>
             ['cancelled', 'rejected', 'failed'].includes(String(item.status).toLowerCase())
         ),
+        all: mapped,
     };
 };
 
@@ -169,7 +187,10 @@ const UserDetails = () => {
     const { userId } = useParams();
     const navigate = useNavigate();
     const dispatch = useDispatch();
-    const { userDetails, detailsLoading } = useSelector((state) => state.users);
+
+    const { userDetails, detailsStatus, balanceUpdateStatus, error } = useSelector(
+        (state) => state.users
+    );
 
     const [showBalanceModal, setShowBalanceModal] = useState(false);
 
@@ -177,6 +198,10 @@ const UserDetails = () => {
         if (userId) {
             dispatch(fetchUserDetails(userId));
         }
+
+        return () => {
+            dispatch(resetBalanceUpdateStatus());
+        };
     }, [dispatch, userId]);
 
     const portfolioData = useMemo(() => buildPortfolioSummary(userDetails || {}), [userDetails]);
@@ -188,8 +213,26 @@ const UserDetails = () => {
 
     const ordersData = useMemo(() => buildOrdersFromInvestments(userDetails || {}), [userDetails]);
 
-    if (detailsLoading) {
+    if (detailsStatus === 'loading') {
         return <Loading message="Loading user details..." />;
+    }
+
+    if (detailsStatus === 'failed') {
+        return (
+            <div className="p-6">
+                <button
+                    onClick={() => navigate('/dashboard/users')}
+                    className="mb-4 inline-flex items-center gap-2 rounded-lg border px-4 py-2"
+                    type="button"
+                >
+                    <ArrowLeft size={18} />
+                    Back to users
+                </button>
+                <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">
+                    {error || 'Failed to load user details'}
+                </div>
+            </div>
+        );
     }
 
     if (!userDetails) return null;
@@ -197,21 +240,19 @@ const UserDetails = () => {
     const user = userDetails.user || {};
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-6">
+        <div className="min-h-screen bg-gray-50 p-6">
             <div className="mb-8 flex items-center justify-between">
                 <div className="flex items-center gap-4">
                     <button
                         onClick={() => navigate('/dashboard/users')}
-                        className="group rounded-xl bg-white/50 p-3 shadow-md backdrop-blur-sm transition hover:bg-white"
+                        className="group rounded-xl bg-white p-3 shadow-sm border border-gray-200 transition hover:bg-gray-50"
                         type="button"
                     >
                         <ArrowLeft className="text-gray-600 group-hover:text-gray-900" size={24} />
                     </button>
 
                     <div>
-                        <h1 className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-3xl font-bold text-transparent">
-                            User Profile & Portfolio
-                        </h1>
+                        <h1 className="text-3xl font-bold text-gray-900">User Profile & Portfolio</h1>
                         <p className="mt-1 text-gray-600">
                             Complete investment overview and management
                         </p>
@@ -221,26 +262,21 @@ const UserDetails = () => {
                 <div className="flex gap-3">
                     <button
                         onClick={() => setShowBalanceModal(true)}
-                        className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 px-5 py-3 font-semibold text-white shadow-lg transition hover:from-blue-600 hover:to-blue-700"
+                        className="flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white shadow-sm transition hover:bg-blue-700"
                         type="button"
                     >
                         <Wallet size={18} />
-                        Update Balance
+                        {balanceUpdateStatus === 'loading' ? 'Updating...' : 'Update Balance'}
                     </button>
                 </div>
             </div>
 
             <div className="space-y-6">
                 <UserProfileCard user={user} />
-
                 <UserBalanceCards user={user} portfolio={portfolioData} />
-
                 <UserHoldings holdings={holdingsData} portfolio={portfolioData} />
-
                 <UserOrders orders={ordersData} />
-
                 <UserBankDetails user={user} />
-
                 <UserTransactions transactions={userDetails.recentTransactions || []} />
             </div>
 

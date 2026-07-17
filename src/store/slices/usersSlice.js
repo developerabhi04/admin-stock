@@ -10,10 +10,8 @@ const initialState = {
   currentPage: 1,
   totalUsers: 0,
   totalWalletBalance: 0,
-  totalBonusBalance: 0,
   totalWithdrawals: 0,
   pendingWithdrawals: 0,
-  grandTotal: 0,
 
   listStatus: 'idle',
   detailsStatus: 'idle',
@@ -30,17 +28,12 @@ const initialState = {
 
 const normalizeUser = (user = {}) => {
   const walletBalance = Number(user.walletBalance || 0);
-  const bonusBalance = Number(user.bonusBalance || 0);
 
   return {
     ...user,
     _id: user._id || user.id || '',
+    id: user.id || user._id || '',
     walletBalance,
-    bonusBalance,
-    totalBalance:
-      user.totalBalance !== undefined
-        ? Number(user.totalBalance || 0)
-        : walletBalance + bonusBalance,
   };
 };
 
@@ -62,8 +55,11 @@ const normalizeUserDetails = (payload = {}) => {
     portfolioSummary: payload.portfolioSummary || {},
     investmentOrders: payload.investmentOrders || {
       pending: [],
+      active: [],
+      unlocked: [],
       completed: [],
       cancelled: [],
+      all: [],
     },
   };
 };
@@ -107,11 +103,6 @@ export const fetchUsers = createAsyncThunk(
         currentPage: Number(data.currentPage || page),
         totalUsers: Number(data.totalUsers || 0),
         totalWalletBalance: Number(data.totalWalletBalance || 0),
-        totalBonusBalance: Number(data.totalBonusBalance || 0),
-        grandTotal:
-          data.grandTotal !== undefined
-            ? Number(data.grandTotal || 0)
-            : Number(data.totalWalletBalance || 0) + Number(data.totalBonusBalance || 0),
         totalWithdrawals: Number(withdrawalStats.totalWithdrawals || 0),
         pendingWithdrawals: Number(withdrawalStats.pendingAmount || 0),
       };
@@ -171,6 +162,9 @@ const usersSlice = createSlice({
       state.userDetails = null;
       state.detailsStatus = 'idle';
     },
+    resetBalanceUpdateStatus: (state) => {
+      state.balanceUpdateStatus = 'idle';
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -185,8 +179,6 @@ const usersSlice = createSlice({
         state.currentPage = action.payload.currentPage;
         state.totalUsers = action.payload.totalUsers;
         state.totalWalletBalance = action.payload.totalWalletBalance;
-        state.totalBonusBalance = action.payload.totalBonusBalance;
-        state.grandTotal = action.payload.grandTotal;
         state.totalWithdrawals = action.payload.totalWithdrawals;
         state.pendingWithdrawals = action.payload.pendingWithdrawals;
       })
@@ -234,36 +226,17 @@ const usersSlice = createSlice({
         if (!userId) return;
 
         const newWalletBalance = Number(
-          updatedUser.newWalletBalance ??
-          updatedUser.walletBalance ??
-          0
+          updatedUser.newWalletBalance ?? updatedUser.walletBalance ?? 0
         );
-
-        const newBonusBalance = Number(
-          updatedUser.newBonusBalance ??
-          updatedUser.bonusBalance ??
-          0
-        );
-
-        const newTotalBalance =
-          updatedUser.newTotalBalance !== undefined
-            ? Number(updatedUser.newTotalBalance || 0)
-            : newWalletBalance + newBonusBalance;
 
         const index = state.users.findIndex((u) => (u._id || u.id) === userId);
 
         if (index !== -1) {
           state.users[index].walletBalance = newWalletBalance;
-          state.users[index].bonusBalance =
-            state.users[index].bonusBalance ?? newBonusBalance;
-          state.users[index].totalBalance = newTotalBalance;
         }
 
         if ((state.userDetails?.user?._id || state.userDetails?.user?.id) === userId) {
           state.userDetails.user.walletBalance = newWalletBalance;
-          state.userDetails.user.bonusBalance =
-            state.userDetails.user.bonusBalance ?? newBonusBalance;
-          state.userDetails.user.totalBalance = newTotalBalance;
         }
       })
       .addCase(updateUserBalance.rejected, (state, action) => {
@@ -273,5 +246,11 @@ const usersSlice = createSlice({
   },
 });
 
-export const { setFilters, clearError, clearUserDetails } = usersSlice.actions;
+export const {
+  setFilters,
+  clearError,
+  clearUserDetails,
+  resetBalanceUpdateStatus,
+} = usersSlice.actions;
+
 export default usersSlice.reducer;
