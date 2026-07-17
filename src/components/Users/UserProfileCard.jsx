@@ -1,31 +1,108 @@
-import { User, Phone, Mail, Calendar, CheckCircle, Shield } from 'lucide-react';
+import {
+  User,
+  Phone,
+  Mail,
+  Calendar,
+  CheckCircle,
+  Shield,
+  BadgeCheck,
+  XCircle,
+  CircleDashed,
+  Hash,
+} from 'lucide-react';
+
+const formatDate = (value) => {
+  if (!value) return '-';
+
+  try {
+    return new Date(value).toLocaleDateString('en-IN', {
+      dateStyle: 'medium',
+    });
+  } catch {
+    return '-';
+  }
+};
+
+const getKycMeta = (kycStatus) => {
+  const status = String(kycStatus || '').toLowerCase();
+
+  if (status === 'verified') {
+    return {
+      label: 'Verified',
+      className: 'bg-emerald-500/15 text-emerald-50 ring-emerald-300/30',
+      icon: Shield,
+    };
+  }
+
+  if (status === 'approved') {
+    return {
+      label: 'Approved',
+      className: 'bg-emerald-500/15 text-emerald-50 ring-emerald-300/30',
+      icon: Shield,
+    };
+  }
+
+  if (status === 'pending') {
+    return {
+      label: 'Pending',
+      className: 'bg-amber-500/15 text-amber-50 ring-amber-300/30',
+      icon: CircleDashed,
+    };
+  }
+
+  if (status === 'rejected') {
+    return {
+      label: 'Rejected',
+      className: 'bg-red-500/15 text-red-50 ring-red-300/30',
+      icon: XCircle,
+    };
+  }
+
+  return {
+    label: 'Not Started',
+    className: 'bg-white/10 text-blue-50 ring-white/20',
+    icon: Shield,
+  };
+};
+
+const getAccountMeta = (user) => {
+  if (user?.isActive === false) {
+    return {
+      label: 'Inactive',
+      className: 'bg-red-500/15 text-red-50 ring-red-300/30',
+      icon: XCircle,
+    };
+  }
+
+  if (user?.isVerified) {
+    return {
+      label: 'Verified',
+      className: 'bg-emerald-500/15 text-emerald-50 ring-emerald-300/30',
+      icon: CheckCircle,
+    };
+  }
+
+  return {
+    label: 'Unverified',
+    className: 'bg-white/10 text-blue-50 ring-white/20',
+    icon: BadgeCheck,
+  };
+};
+
+const buildPhone = (user) => {
+  const phone = user?.phoneNumber || user?.phone || '';
+  const code = user?.countryCode || '';
+  if (!phone) return '-';
+  return code ? `${code} ${phone}` : phone;
+};
 
 const UserProfileCard = ({ user = {} }) => {
-  const joinedDate = user.createdAt
-    ? new Date(user.createdAt).toLocaleDateString('en-IN', {
-        dateStyle: 'medium',
-      })
-    : '-';
+  const joinedDate = formatDate(user.createdAt);
+  const accountMeta = getAccountMeta(user);
+  const kycMeta = getKycMeta(user.kycStatus);
 
-  const kycLabel =
-    user.kycStatus === 'verified'
-      ? 'Verified'
-      : user.kycStatus === 'approved'
-      ? 'Approved'
-      : user.kycStatus === 'pending'
-      ? 'Pending'
-      : user.kycStatus === 'rejected'
-      ? 'Rejected'
-      : 'Not Started';
-
-  const kycBadgeClass =
-    user.kycStatus === 'verified' || user.kycStatus === 'approved'
-      ? 'bg-emerald-500/15 text-emerald-50 ring-emerald-300/30'
-      : user.kycStatus === 'pending'
-      ? 'bg-amber-500/15 text-amber-50 ring-amber-300/30'
-      : user.kycStatus === 'rejected'
-      ? 'bg-red-500/15 text-red-50 ring-red-300/30'
-      : 'bg-white/10 text-blue-50 ring-white/20';
+  const AccountIcon = accountMeta.icon;
+  const KycIcon = kycMeta.icon;
 
   return (
     <section className="overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 p-6 shadow-xl md:p-8">
@@ -41,47 +118,48 @@ const UserProfileCard = ({ user = {} }) => {
             </h2>
 
             <div className="mt-3 flex flex-wrap gap-3 text-sm text-blue-100">
-              {user.phoneNumber || user.phone ? (
+              {(user.phoneNumber || user.phone) && (
                 <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5">
                   <Phone size={15} />
-                  <span>{user.phoneNumber || user.phone}</span>
+                  <span>{buildPhone(user)}</span>
                 </div>
-              ) : null}
+              )}
 
-              {user.email ? (
+              {user.email && (
                 <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5">
                   <Mail size={15} />
                   <span className="max-w-[220px] truncate">{user.email}</span>
                 </div>
-              ) : null}
+              )}
 
               <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5">
                 <Calendar size={15} />
                 <span>Joined {joinedDate}</span>
               </div>
 
-              {user._id ? (
+              {user._id && (
                 <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-xs md:text-sm">
+                  <Hash size={14} />
                   <span>ID: {String(user._id).slice(-8)}</span>
                 </div>
-              ) : null}
+              )}
             </div>
           </div>
         </div>
 
         <div className="flex flex-wrap gap-2 lg:flex-col lg:items-end">
-          {user.isVerified ? (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-3 py-1.5 text-sm font-semibold text-emerald-50 ring-1 ring-emerald-300/30">
-              <CheckCircle size={14} />
-              Verified
-            </span>
-          ) : null}
+          <span
+            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold ring-1 ${accountMeta.className}`}
+          >
+            <AccountIcon size={14} />
+            {accountMeta.label}
+          </span>
 
           <span
-            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold ring-1 ${kycBadgeClass}`}
+            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold ring-1 ${kycMeta.className}`}
           >
-            <Shield size={14} />
-            KYC: {kycLabel}
+            <KycIcon size={14} />
+            KYC: {kycMeta.label}
           </span>
         </div>
       </div>

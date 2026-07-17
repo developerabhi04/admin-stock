@@ -1,11 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchUserDetails, updateUserBalance } from '../../store/slices/usersSlice';
-import { ArrowLeft, Wallet, Send } from 'lucide-react';
+import { ArrowLeft, Wallet } from 'lucide-react';
 import Loading from '../../components/Loader';
 
-// Import sub-components
 import UserProfileCard from '../../components/Users/UserProfileCard';
 import UserBalanceCards from '../../components/Users/UserBalanceCards';
 import UserHoldings from '../../components/Users/UserHoldings';
@@ -13,7 +12,158 @@ import UserOrders from '../../components/Users/UserOrders';
 import UserTransactions from '../../components/Users/UserTransactions';
 import UserBankDetails from '../../components/Users/UserBankDetails';
 import UpdateBalanceModal from '../../components/Users/UpdateBalanceModal';
-import SendNotificationModal from '../../components/Users/SendNotificationModal';
+
+const buildPortfolioSummary = (userDetails = {}) => {
+    const backendPortfolio = userDetails.portfolioSummary || {};
+    const investments = Array.isArray(userDetails.investments) ? userDetails.investments : [];
+
+    const totalInvested =
+        backendPortfolio.totalInvested ??
+        backendPortfolio.totalPrincipalInvested ??
+        investments.reduce((sum, item) => {
+            if (String(item.status || '').toLowerCase() === 'active') {
+                return sum + Number(item.amount || 0);
+            }
+            return sum;
+        }, 0);
+
+    const currentValue =
+        backendPortfolio.currentValue ??
+        backendPortfolio.totalCurrentValue ??
+        investments.reduce((sum, item) => {
+            if (String(item.status || '').toLowerCase() === 'active') {
+                return sum + Number(item.amount || 0) + Number(item.totalInterestEarned || 0);
+            }
+            return sum;
+        }, 0);
+
+    const totalPnL =
+        backendPortfolio.totalPnL ??
+        backendPortfolio.totalInterestEarned ??
+        (currentValue - totalInvested);
+
+    const totalPnLPercent =
+        backendPortfolio.totalPnLPercent ??
+        (Number(totalInvested || 0) > 0 ? (Number(totalPnL || 0) / Number(totalInvested || 1)) * 100 : 0);
+
+    const todayPnL =
+        backendPortfolio.todayPnL ??
+        backendPortfolio.totalDailyEarning ??
+        investments.reduce((sum, item) => {
+            if (String(item.status || '').toLowerCase() === 'active') {
+                return sum + Number(item.dailyInterestAmount || item.dailyReturn || 0);
+            }
+            return sum;
+        }, 0);
+
+    const todayPnLPercent =
+        backendPortfolio.todayPnLPercent ??
+        (Number(totalInvested || 0) > 0 ? (Number(todayPnL || 0) / Number(totalInvested || 1)) * 100 : 0);
+
+    return {
+        ...backendPortfolio,
+        totalInvested: Number(totalInvested || 0),
+        currentValue: Number(currentValue || 0),
+        totalPnL: Number(totalPnL || 0),
+        totalPnLPercent: Number(totalPnLPercent || 0),
+        todayPnL: Number(todayPnL || 0),
+        todayPnLPercent: Number(todayPnLPercent || 0),
+    };
+};
+
+const mapInvestmentsToHoldings = (investments = []) => {
+    return investments
+        .filter((item) => String(item.status || '').toLowerCase() === 'active')
+        .map((item, index) => {
+            const investedValue = Number(item.amount || 0);
+            const pnl = Number(item.totalInterestEarned || 0);
+            const currentValue = investedValue + pnl;
+            const quantity = Number(item.quantity || item.units || 1);
+            const avgBuyPrice = quantity > 0 ? investedValue / quantity : investedValue;
+            const currentPrice = quantity > 0 ? currentValue / quantity : currentValue;
+
+            return {
+                _id: item._id || `holding-${index}`,
+                indexName:
+                    item.indexName ||
+                    item.indexSnapshot?.name ||
+                    item.index?.name ||
+                    item.indexId?.name ||
+                    item.planName ||
+                    '-',
+                symbol:
+                    item.symbol ||
+                    item.indexSnapshot?.symbol ||
+                    item.index?.symbol ||
+                    item.indexId?.symbol ||
+                    '',
+                quantity,
+                avgBuyPrice,
+                currentPrice,
+                investedValue,
+                currentValue,
+                pnl,
+                pnlPercent: investedValue > 0 ? (pnl / investedValue) * 100 : 0,
+                dailyReturn: Number(item.dailyInterestAmount || item.dailyReturn || 0),
+                purchaseDate: item.orderPlacedAt || item.createdAt || null,
+                daysRemaining: Number(item.daysRemaining || 0),
+                lockPeriodDays: Number(item.lockPeriodDays || 0),
+            };
+        });
+};
+
+const buildOrdersFromInvestments = (userDetails = {}) => {
+    if (userDetails.investmentOrders) {
+        return {
+            pending: Array.isArray(userDetails.investmentOrders.pending)
+                ? userDetails.investmentOrders.pending
+                : [],
+            completed: Array.isArray(userDetails.investmentOrders.completed)
+                ? userDetails.investmentOrders.completed
+                : [],
+            cancelled: Array.isArray(userDetails.investmentOrders.cancelled)
+                ? userDetails.investmentOrders.cancelled
+                : [],
+        };
+    }
+
+    const investments = Array.isArray(userDetails.investments) ? userDetails.investments : [];
+
+    const mapped = investments.map((item, index) => ({
+        _id: item._id || `order-${index}`,
+        orderId: item.orderId || item._id,
+        type: item.type || item.action || 'buy',
+        indexName:
+            item.indexName ||
+            item.indexSnapshot?.name ||
+            item.index?.name ||
+            item.indexId?.name ||
+            item.planName ||
+            '-',
+        quantity: Number(item.quantity || item.units || 1),
+        price:
+            Number(item.price || item.unitPrice || 0) ||
+            Number(item.amount || 0) / Math.max(Number(item.quantity || item.units || 1), 1),
+        totalAmount: Number(item.totalAmount || item.amount || 0),
+        orderDate: item.orderDate || item.orderPlacedAt || item.createdAt || null,
+        status: item.status || 'pending',
+        reason: item.reason || item.rejectionReason || '',
+    }));
+
+    return {
+        pending: mapped.filter((item) =>
+            ['pending', 'processing', 'initiated'].includes(String(item.status).toLowerCase())
+        ),
+        completed: mapped.filter((item) =>
+            ['completed', 'active', 'approved', 'unlocked', 'closed_reinvested'].includes(
+                String(item.status).toLowerCase()
+            )
+        ),
+        cancelled: mapped.filter((item) =>
+            ['cancelled', 'rejected', 'failed'].includes(String(item.status).toLowerCase())
+        ),
+    };
+};
 
 const UserDetails = () => {
     const { userId } = useParams();
@@ -22,133 +172,21 @@ const UserDetails = () => {
     const { userDetails, detailsLoading } = useSelector((state) => state.users);
 
     const [showBalanceModal, setShowBalanceModal] = useState(false);
-    const [showNotificationModal, setShowNotificationModal] = useState(false);
-
-    // Sample trading data - Replace with real API call
-    const [tradingData, setTradingData] = useState({
-        // Holdings
-        holdings: [
-            {
-                indexId: '1',
-                indexName: 'Nifty 50',
-                quantity: 10,
-                avgBuyPrice: 21500,
-                currentPrice: 22350,
-                investedValue: 215000,
-                currentValue: 223500,
-                pnl: 8500,
-                pnlPercent: 3.95,
-                dailyReturn: 1.8,
-                purchaseDate: '2024-01-15'
-            },
-            {
-                indexId: '2',
-                indexName: 'Sensex',
-                quantity: 5,
-                avgBuyPrice: 71200,
-                currentPrice: 72850,
-                investedValue: 356000,
-                currentValue: 364250,
-                pnl: 8250,
-                pnlPercent: 2.32,
-                dailyReturn: 1.5,
-                purchaseDate: '2024-01-20'
-            },
-            {
-                indexId: '3',
-                indexName: 'Bank Nifty',
-                quantity: 3,
-                avgBuyPrice: 48500,
-                currentPrice: 49200,
-                investedValue: 145500,
-                currentValue: 147600,
-                pnl: 2100,
-                pnlPercent: 1.44,
-                dailyReturn: 1.2,
-                purchaseDate: '2024-02-01'
-            }
-        ],
-
-        // Orders
-        orders: {
-            pending: [
-                {
-                    orderId: 'ORD001',
-                    type: 'buy',
-                    indexName: 'IT Index',
-                    quantity: 5,
-                    price: 38500,
-                    totalAmount: 192500,
-                    orderDate: '2026-02-05T10:30:00',
-                    status: 'pending'
-                },
-                {
-                    orderId: 'ORD002',
-                    type: 'sell',
-                    indexName: 'Nifty 50',
-                    quantity: 2,
-                    price: 22350,
-                    totalAmount: 44700,
-                    orderDate: '2026-02-05T14:20:00',
-                    status: 'pending'
-                }
-            ],
-            completed: [
-                {
-                    orderId: 'ORD003',
-                    type: 'buy',
-                    indexName: 'Nifty 50',
-                    quantity: 10,
-                    price: 21500,
-                    totalAmount: 215000,
-                    orderDate: '2024-01-15T09:15:00',
-                    completedDate: '2024-01-15T09:16:00',
-                    status: 'completed'
-                },
-                {
-                    orderId: 'ORD004',
-                    type: 'buy',
-                    indexName: 'Sensex',
-                    quantity: 5,
-                    price: 71200,
-                    totalAmount: 356000,
-                    orderDate: '2024-01-20T11:30:00',
-                    completedDate: '2024-01-20T11:31:00',
-                    status: 'completed'
-                }
-            ],
-            cancelled: [
-                {
-                    orderId: 'ORD005',
-                    type: 'buy',
-                    indexName: 'Pharma Index',
-                    quantity: 8,
-                    price: 15200,
-                    totalAmount: 121600,
-                    orderDate: '2024-01-25T16:45:00',
-                    cancelledDate: '2024-01-25T17:00:00',
-                    status: 'cancelled',
-                    reason: 'Insufficient balance'
-                }
-            ]
-        },
-
-        // Portfolio Summary
-        portfolio: {
-            totalInvested: 716500,
-            currentValue: 735350,
-            totalPnL: 18850,
-            totalPnLPercent: 2.63,
-            todayPnL: 2850,
-            todayPnLPercent: 0.39
-        }
-    });
 
     useEffect(() => {
-        dispatch(fetchUserDetails(userId));
-        // TODO: Fetch trading data
-        // fetchUserTradingData(userId);
+        if (userId) {
+            dispatch(fetchUserDetails(userId));
+        }
     }, [dispatch, userId]);
+
+    const portfolioData = useMemo(() => buildPortfolioSummary(userDetails || {}), [userDetails]);
+
+    const holdingsData = useMemo(
+        () => mapInvestmentsToHoldings(userDetails?.investments || []),
+        [userDetails]
+    );
+
+    const ordersData = useMemo(() => buildOrdersFromInvestments(userDetails || {}), [userDetails]);
 
     if (detailsLoading) {
         return <Loading message="Loading user details..." />;
@@ -156,38 +194,35 @@ const UserDetails = () => {
 
     if (!userDetails) return null;
 
-    const user = userDetails.user;
+    const user = userDetails.user || {};
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-6">
-            {/* Header */}
-            <div className="flex items-center justify-between mb-8">
+            <div className="mb-8 flex items-center justify-between">
                 <div className="flex items-center gap-4">
                     <button
                         onClick={() => navigate('/dashboard/users')}
-                        className="p-3 hover:bg-white rounded-xl transition group shadow-md bg-white/50 backdrop-blur-sm"
+                        className="group rounded-xl bg-white/50 p-3 shadow-md backdrop-blur-sm transition hover:bg-white"
+                        type="button"
                     >
                         <ArrowLeft className="text-gray-600 group-hover:text-gray-900" size={24} />
                     </button>
+
                     <div>
-                        <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                            User Profile & Trading
+                        <h1 className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-3xl font-bold text-transparent">
+                            User Profile & Portfolio
                         </h1>
-                        <p className="text-gray-600 mt-1">Complete trading overview and management</p>
+                        <p className="mt-1 text-gray-600">
+                            Complete investment overview and management
+                        </p>
                     </div>
                 </div>
 
                 <div className="flex gap-3">
                     <button
-                        onClick={() => setShowNotificationModal(true)}
-                        className="flex items-center gap-2 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white px-5 py-3 rounded-xl transition shadow-lg font-semibold"
-                    >
-                        <Send size={18} />
-                        Send Notification
-                    </button>
-                    <button
                         onClick={() => setShowBalanceModal(true)}
-                        className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-5 py-3 rounded-xl transition shadow-lg font-semibold"
+                        className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 px-5 py-3 font-semibold text-white shadow-lg transition hover:from-blue-600 hover:to-blue-700"
+                        type="button"
                     >
                         <Wallet size={18} />
                         Update Balance
@@ -195,26 +230,20 @@ const UserDetails = () => {
                 </div>
             </div>
 
-            {/* User Profile Card */}
-            <UserProfileCard user={user} />
+            <div className="space-y-6">
+                <UserProfileCard user={user} />
 
-            {/* Balance Cards */}
-            <UserBalanceCards user={user} portfolio={tradingData.portfolio} />
+                <UserBalanceCards user={user} portfolio={portfolioData} />
 
-            {/* Holdings Section */}
-            <UserHoldings holdings={tradingData.holdings} portfolio={tradingData.portfolio} />
+                <UserHoldings holdings={holdingsData} portfolio={portfolioData} />
 
-            {/* Orders Section */}
-            <UserOrders orders={tradingData.orders} />
+                <UserOrders orders={ordersData} />
 
-            {/* Bank Details & KYC */}
-            <UserBankDetails user={user} />
+                <UserBankDetails user={user} />
 
+                <UserTransactions transactions={userDetails.recentTransactions || []} />
+            </div>
 
-            {/* Recent Transactions */}
-            <UserTransactions transactions={userDetails.recentTransactions} />
-
-            {/* Modals */}
             {showBalanceModal && (
                 <UpdateBalanceModal
                     userId={userId}
@@ -222,13 +251,6 @@ const UserDetails = () => {
                     dispatch={dispatch}
                     updateUserBalance={updateUserBalance}
                     fetchUserDetails={fetchUserDetails}
-                />
-            )}
-
-            {showNotificationModal && (
-                <SendNotificationModal
-                    userId={userId}
-                    onClose={() => setShowNotificationModal(false)}
                 />
             )}
         </div>

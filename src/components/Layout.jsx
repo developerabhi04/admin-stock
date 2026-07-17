@@ -11,8 +11,6 @@ import {
   Users,
   TrendingUp,
   Image,
-  Bell,
-  BarChart3,
   Layers,
   Menu,
   X,
@@ -111,19 +109,19 @@ const Layout = () => {
       label: 'Users',
       description: 'Manage users'
     },
-    {
-      path: '/dashboard/notifications',
-      icon: Bell,
-      label: 'Notifications',
-      description: 'Send push notifications'
-    },
+    // {
+    //   path: '/dashboard/notifications',
+    //   icon: Bell,
+    //   label: 'Notifications',
+    //   description: 'Send push notifications'
+    // },
 
-    {
-      path: '/dashboard/reports',
-      icon: BarChart3,
-      label: 'Reports',
-      description: 'View analytics and reports'
-    },
+    // {
+    //   path: '/dashboard/reports',
+    //   icon: BarChart3,
+    //   label: 'Reports',
+    //   description: 'View analytics and reports'
+    // },
     {
       path: '/dashboard/admins',
       icon: ShieldCheckIcon,
