@@ -1,11 +1,11 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { adminAPI } from '../../services/api';
 
-
 const initialState = {
   users: [],
   userDetails: null,
   stats: null,
+
   totalPages: 0,
   currentPage: 1,
   totalUsers: 0,
@@ -14,8 +14,12 @@ const initialState = {
   totalWithdrawals: 0,
   pendingWithdrawals: 0,
   grandTotal: 0,
-  loading: false,
-  detailsLoading: false,
+
+  listStatus: 'idle',
+  detailsStatus: 'idle',
+  statsStatus: 'idle',
+  balanceUpdateStatus: 'idle',
+
   error: null,
   filters: {
     search: '',
@@ -24,16 +28,53 @@ const initialState = {
   },
 };
 
-// Fetch all users
+const normalizeUser = (user = {}) => {
+  const walletBalance = Number(user.walletBalance || 0);
+  const bonusBalance = Number(user.bonusBalance || 0);
+
+  return {
+    ...user,
+    _id: user._id || user.id || '',
+    walletBalance,
+    bonusBalance,
+    totalBalance:
+      user.totalBalance !== undefined
+        ? Number(user.totalBalance || 0)
+        : walletBalance + bonusBalance,
+  };
+};
+
+const normalizeUserDetails = (payload = {}) => {
+  const normalizedUser = normalizeUser(payload.user || {});
+  const recentTransactions = Array.isArray(payload.recentTransactions)
+    ? payload.recentTransactions
+    : Array.isArray(payload.transactions)
+      ? payload.transactions
+      : [];
+
+  const investments = Array.isArray(payload.investments) ? payload.investments : [];
+
+  return {
+    ...payload,
+    user: normalizedUser,
+    recentTransactions,
+    investments,
+    portfolioSummary: payload.portfolioSummary || {},
+    investmentOrders: payload.investmentOrders || {
+      pending: [],
+      completed: [],
+      cancelled: [],
+    },
+  };
+};
+
 export const fetchUsers = createAsyncThunk(
   'users/fetchAll',
   async (
-    { page = 1, limit = 20, search = '', sortBy = 'createdAt', sortOrder = 'desc' },
+    { page = 1, limit = 20, search = '', sortBy = 'createdAt', sortOrder = 'desc' } = {},
     { rejectWithValue }
   ) => {
     try {
-      console.log('🟢 Redux: Fetching users...');
-
       const response = await adminAPI.getAllUsers({
         page,
         limit,
@@ -45,11 +86,8 @@ export const fetchUsers = createAsyncThunk(
       const data = response?.data?.data;
 
       if (!data) {
-        console.error('❌ Redux: No data in response!', response?.data);
         return rejectWithValue('No data received from server');
       }
-
-      console.log('✅ Redux: Users fetched:', data.users?.length || 0);
 
       let withdrawalStats = {
         totalWithdrawals: 0,
@@ -58,64 +96,61 @@ export const fetchUsers = createAsyncThunk(
 
       try {
         const statsResponse = await adminAPI.getWithdrawalStats();
-        withdrawalStats = statsResponse?.data?.data || {
-          totalWithdrawals: 0,
-          pendingAmount: 0,
-        };
-        console.log('✅ Redux: Withdrawal stats:', withdrawalStats);
+        withdrawalStats = statsResponse?.data?.data || withdrawalStats;
       } catch (error) {
-        console.warn(
-          '⚠️ Redux: Failed to fetch withdrawal stats, using defaults:',
-          error.message
-        );
+        console.warn('Withdrawal stats fetch failed:', error?.message);
       }
 
       return {
-        ...data,
-        totalWithdrawals: withdrawalStats.totalWithdrawals || 0,
-        pendingWithdrawals: withdrawalStats.pendingAmount || 0,
+        users: Array.isArray(data.users) ? data.users.map(normalizeUser) : [],
+        totalPages: Number(data.totalPages || 0),
+        currentPage: Number(data.currentPage || page),
+        totalUsers: Number(data.totalUsers || 0),
+        totalWalletBalance: Number(data.totalWalletBalance || 0),
+        totalBonusBalance: Number(data.totalBonusBalance || 0),
+        grandTotal:
+          data.grandTotal !== undefined
+            ? Number(data.grandTotal || 0)
+            : Number(data.totalWalletBalance || 0) + Number(data.totalBonusBalance || 0),
+        totalWithdrawals: Number(withdrawalStats.totalWithdrawals || 0),
+        pendingWithdrawals: Number(withdrawalStats.pendingAmount || 0),
       };
     } catch (error) {
-      console.error('🔴 Redux: Error:', error);
-      console.error('🔴 Redux: Error response:', error.response?.data);
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch users');
     }
   }
 );
 
-// Fetch user stats
 export const fetchUserStats = createAsyncThunk(
   'users/fetchStats',
   async (_, { rejectWithValue }) => {
     try {
       const response = await adminAPI.getUserStats();
-      return response?.data?.data;
+      return response?.data?.data || {};
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch stats');
     }
   }
 );
 
-// Fetch user details
 export const fetchUserDetails = createAsyncThunk(
   'users/fetchDetails',
   async (userId, { rejectWithValue }) => {
     try {
       const response = await adminAPI.getUserDetails(userId);
-      return response?.data?.data;
+      return normalizeUserDetails(response?.data?.data || {});
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch user details');
     }
   }
 );
 
-// Update user balance
 export const updateUserBalance = createAsyncThunk(
   'users/updateBalance',
   async (data, { rejectWithValue }) => {
     try {
       const response = await adminAPI.updateUserBalance(data);
-      return response?.data?.data;
+      return response?.data?.data || {};
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to update balance');
     }
@@ -134,67 +169,106 @@ const usersSlice = createSlice({
     },
     clearUserDetails: (state) => {
       state.userDetails = null;
+      state.detailsStatus = 'idle';
     },
   },
   extraReducers: (builder) => {
     builder
       .addCase(fetchUsers.pending, (state) => {
-        state.loading = true;
+        state.listStatus = 'loading';
         state.error = null;
       })
       .addCase(fetchUsers.fulfilled, (state, action) => {
-        console.log('✅ Redux: Users state updated');
-        state.loading = false;
-        state.users = action.payload?.users || [];
-        state.totalPages = action.payload?.totalPages || 0;
-        state.currentPage = action.payload?.currentPage || 1;
-        state.totalUsers = action.payload?.totalUsers || 0;
-        state.totalWalletBalance = action.payload?.totalWalletBalance || 0;
-        state.totalBonusBalance = action.payload?.totalBonusBalance || 0;
-        state.grandTotal = action.payload?.grandTotal || 0;
-        state.totalWithdrawals = action.payload?.totalWithdrawals || 0;
-        state.pendingWithdrawals = action.payload?.pendingWithdrawals || 0;
+        state.listStatus = 'succeeded';
+        state.users = action.payload.users;
+        state.totalPages = action.payload.totalPages;
+        state.currentPage = action.payload.currentPage;
+        state.totalUsers = action.payload.totalUsers;
+        state.totalWalletBalance = action.payload.totalWalletBalance;
+        state.totalBonusBalance = action.payload.totalBonusBalance;
+        state.grandTotal = action.payload.grandTotal;
+        state.totalWithdrawals = action.payload.totalWithdrawals;
+        state.pendingWithdrawals = action.payload.pendingWithdrawals;
       })
       .addCase(fetchUsers.rejected, (state, action) => {
-        console.error('❌ Redux: Users fetch failed');
-        state.loading = false;
+        state.listStatus = 'failed';
         state.error = action.payload;
         state.users = [];
       })
 
+      .addCase(fetchUserStats.pending, (state) => {
+        state.statsStatus = 'loading';
+      })
       .addCase(fetchUserStats.fulfilled, (state, action) => {
+        state.statsStatus = 'succeeded';
         state.stats = action.payload;
       })
-
-      .addCase(fetchUserDetails.pending, (state) => {
-        state.detailsLoading = true;
-        state.error = null;
-      })
-      .addCase(fetchUserDetails.fulfilled, (state, action) => {
-        state.detailsLoading = false;
-        state.userDetails = action.payload;
-      })
-      .addCase(fetchUserDetails.rejected, (state, action) => {
-        state.detailsLoading = false;
+      .addCase(fetchUserStats.rejected, (state, action) => {
+        state.statsStatus = 'failed';
         state.error = action.payload;
       })
 
+      .addCase(fetchUserDetails.pending, (state) => {
+        state.detailsStatus = 'loading';
+        state.error = null;
+      })
+      .addCase(fetchUserDetails.fulfilled, (state, action) => {
+        state.detailsStatus = 'succeeded';
+        state.userDetails = action.payload;
+      })
+      .addCase(fetchUserDetails.rejected, (state, action) => {
+        state.detailsStatus = 'failed';
+        state.error = action.payload;
+      })
+
+      .addCase(updateUserBalance.pending, (state) => {
+        state.balanceUpdateStatus = 'loading';
+        state.error = null;
+      })
       .addCase(updateUserBalance.fulfilled, (state, action) => {
-        const updatedUser = action.payload?.user;
+        state.balanceUpdateStatus = 'succeeded';
 
-        if (!updatedUser?.id) return;
+        const updatedUser = action.payload?.user || {};
+        const userId = updatedUser._id || updatedUser.id;
 
-        const index = state.users.findIndex((u) => u._id === updatedUser.id);
+        if (!userId) return;
+
+        const newWalletBalance = Number(
+          updatedUser.newWalletBalance ??
+          updatedUser.walletBalance ??
+          0
+        );
+
+        const newBonusBalance = Number(
+          updatedUser.newBonusBalance ??
+          updatedUser.bonusBalance ??
+          0
+        );
+
+        const newTotalBalance =
+          updatedUser.newTotalBalance !== undefined
+            ? Number(updatedUser.newTotalBalance || 0)
+            : newWalletBalance + newBonusBalance;
+
+        const index = state.users.findIndex((u) => (u._id || u.id) === userId);
 
         if (index !== -1) {
-          state.users[index].walletBalance = updatedUser.newWalletBalance;
-          state.users[index].totalBalance = updatedUser.newTotalBalance;
+          state.users[index].walletBalance = newWalletBalance;
+          state.users[index].bonusBalance =
+            state.users[index].bonusBalance ?? newBonusBalance;
+          state.users[index].totalBalance = newTotalBalance;
         }
 
-        if (state.userDetails?.user?._id === updatedUser.id) {
-          state.userDetails.user.walletBalance = updatedUser.newWalletBalance;
-          state.userDetails.user.totalBalance = updatedUser.newTotalBalance;
+        if ((state.userDetails?.user?._id || state.userDetails?.user?.id) === userId) {
+          state.userDetails.user.walletBalance = newWalletBalance;
+          state.userDetails.user.bonusBalance =
+            state.userDetails.user.bonusBalance ?? newBonusBalance;
+          state.userDetails.user.totalBalance = newTotalBalance;
         }
+      })
+      .addCase(updateUserBalance.rejected, (state, action) => {
+        state.balanceUpdateStatus = 'failed';
+        state.error = action.payload;
       });
   },
 });
