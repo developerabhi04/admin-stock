@@ -2,11 +2,12 @@ import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { login, clearError } from '../store/slices/authSlice';
-import { Lock, User, AlertCircle } from 'lucide-react';
+import { Lock, User, AlertCircle, Eye, EyeOff, TrendingUp } from 'lucide-react';
 
 const Login = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false); // ✅ toggle state
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
@@ -24,11 +25,9 @@ const Login = () => {
         console.log('📍 Redirecting super admin to /dashboard');
         navigate('/dashboard');
       } else if (admin.allowedRoutes && admin.allowedRoutes.length > 0) {
-        // Redirect to first allowed route
         console.log('📍 Redirecting admin to first allowed route:', admin.allowedRoutes[0]);
         navigate(admin.allowedRoutes[0]);
       } else {
-        // Fallback
         console.log('📍 Redirecting to fallback /dashboard/payment-manager');
         navigate('/dashboard/payment-manager');
       }
@@ -58,44 +57,48 @@ const Login = () => {
         allowedRoutes: adminData.allowedRoutes
       });
 
-      // ✅ Redirect based on role and allowedRoutes
       if (adminData.role === 'super_admin') {
         console.log('📍 Redirecting super admin to /dashboard');
         navigate('/dashboard');
       } else if (adminData.allowedRoutes && adminData.allowedRoutes.length > 0) {
-        // Redirect to first allowed route
         console.log('📍 Redirecting admin to first allowed route:', adminData.allowedRoutes[0]);
         navigate(adminData.allowedRoutes[0]);
       } else {
-        // Fallback for admins without allowedRoutes
         console.log('📍 Redirecting to fallback /dashboard/payment-manager');
         navigate('/dashboard/payment-manager');
       }
     }
   };
 
+  // ✅ Toggle handler for password visibility
+  const togglePasswordVisibility = () => {
+    setShowPassword((prev) => !prev);
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8">
+    <div className="min-h-screen bg-[#0e0f11] flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 border border-gray-100">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="bg-blue-500 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Lock className="text-white" size={32} />
+          <div className="bg-[#00D09C] w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-[#00D09C]/30">
+            <TrendingUp className="text-white" size={32} strokeWidth={2.5} />
           </div>
-          <h1 className="text-3xl font-bold text-gray-800">Admin Portal</h1>
-          <p className="text-gray-500 mt-2">TradeHub Management</p>
+          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">
+            Trade<span className="text-[#00D09C]">Hub</span>
+          </h1>
+          <p className="text-gray-500 mt-2 text-sm">Admin Management Portal</p>
         </div>
 
         {/* Error Message */}
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-6 flex items-center">
-            <AlertCircle size={20} className="mr-2" />
-            <span>{error}</span>
+            <AlertCircle size={20} className="mr-2 flex-shrink-0" />
+            <span className="text-sm">{error}</span>
           </div>
         )}
 
         {/* Login Form */}
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-5">
           {/* Username */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -107,15 +110,16 @@ const Login = () => {
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#00D09C] focus:border-transparent outline-none transition"
                 placeholder="Enter username"
                 required
                 disabled={loading}
+                autoComplete="username"
               />
             </div>
           </div>
 
-          {/* Password */}
+          {/* Password with visibility toggle */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Password
@@ -123,14 +127,26 @@ const Login = () => {
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
               <input
-                type="password"
+                type={showPassword ? 'text' : 'password'} // ✅ toggles input type
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                className="w-full pl-10 pr-11 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#00D09C] focus:border-transparent outline-none transition"
                 placeholder="Enter password"
                 required
                 disabled={loading}
+                autoComplete="current-password"
               />
+              <button
+                type="button"
+                onClick={togglePasswordVisibility}
+                disabled={loading}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-[#00B386] transition-colors focus:outline-none disabled:opacity-50"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                aria-pressed={showPassword}
+                tabIndex={-1}
+              >
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
             </div>
           </div>
 
@@ -138,7 +154,7 @@ const Login = () => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 rounded-lg transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full bg-[#00D09C] hover:bg-[#00B386] text-white font-semibold py-3 rounded-xl transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-md shadow-[#00D09C]/30"
           >
             {loading ? (
               <>
@@ -150,15 +166,6 @@ const Login = () => {
             )}
           </button>
         </form>
-
-        {/* Footer */}
-        <div className="mt-6 text-center text-sm text-gray-500">
-          <p className="mb-2 font-semibold">Test Credentials:</p>
-          <div className="space-y-1 bg-gray-50 p-3 rounded-lg">
-            <p><span className="font-medium">Super Admin:</span> superadmin / admin123</p>
-            <p><span className="font-medium">Admin:</span> Create from admin panel</p>
-          </div>
-        </div>
       </div>
     </div>
   );
