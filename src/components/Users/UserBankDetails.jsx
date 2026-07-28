@@ -34,12 +34,12 @@ const InfoRow = ({ icon: Icon, label, value, tone = 'blue', mono = false }) => {
     );
 };
 
-const maskAccountNumber = (value) => {
-    const str = String(value || '');
-    if (!str) return '-';
-    if (str.length <= 4) return str;
-    return `••••••${str.slice(-4)}`;
-};
+// const maskAccountNumber = (value) => {
+//     const str = String(value || '');
+//     if (!str) return '-';
+//     if (str.length <= 4) return str;
+//     return `••••••${str.slice(-4)}`;
+// };
 
 const normalizeBankAccounts = (user = {}) => {
     if (Array.isArray(user.bankAccounts) && user.bankAccounts.length > 0) {
@@ -160,7 +160,7 @@ const UserBankDetails = ({ user = {} }) => {
                                     <InfoRow
                                         icon={Hash}
                                         label="Account Number"
-                                        value={maskAccountNumber(bank.accountNumber)}
+                                        value={bank.accountNumber}
                                         tone="green"
                                         mono
                                     />
