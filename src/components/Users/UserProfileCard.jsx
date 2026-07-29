@@ -9,6 +9,8 @@ import {
   XCircle,
   CircleDashed,
   Hash,
+  Wallet,
+  Activity,
 } from 'lucide-react';
 
 const formatDate = (value) => {
@@ -26,17 +28,9 @@ const formatDate = (value) => {
 const getKycMeta = (kycStatus) => {
   const status = String(kycStatus || '').toLowerCase();
 
-  if (status === 'verified') {
+  if (status === 'verified' || status === 'approved') {
     return {
       label: 'Verified',
-      className: 'bg-emerald-500/15 text-emerald-50 ring-emerald-300/30',
-      icon: Shield,
-    };
-  }
-
-  if (status === 'approved') {
-    return {
-      label: 'Approved',
       className: 'bg-emerald-500/15 text-emerald-50 ring-emerald-300/30',
       icon: Shield,
     };
@@ -96,6 +90,8 @@ const buildPhone = (user) => {
   return code ? `${code} ${phone}` : phone;
 };
 
+const formatCurrency = (value) => `₹${Number(value || 0).toLocaleString('en-IN')}`;
+
 const UserProfileCard = ({ user = {} }) => {
   const joinedDate = formatDate(user.createdAt);
   const accountMeta = getAccountMeta(user);
@@ -105,8 +101,8 @@ const UserProfileCard = ({ user = {} }) => {
   const KycIcon = kycMeta.icon;
 
   return (
-    <section className="overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 p-6 shadow-xl md:p-8">
-      <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+    <section className="overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 p-6 shadow-xl md:p-8">
+      <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
           <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-white/10 ring-1 ring-white/20 backdrop-blur">
             <User className="text-white" size={38} />
@@ -144,10 +140,42 @@ const UserProfileCard = ({ user = {} }) => {
                 </div>
               )}
             </div>
+
+            <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="rounded-2xl bg-white/10 p-4 ring-1 ring-white/10">
+                <div className="flex items-center gap-2 text-blue-100">
+                  <Wallet size={16} />
+                  <span className="text-xs uppercase tracking-wide">Wallet</span>
+                </div>
+                <p className="mt-2 text-xl font-bold text-white">
+                  {formatCurrency(user.walletBalance || 0)}
+                </p>
+              </div>
+
+              <div className="rounded-2xl bg-white/10 p-4 ring-1 ring-white/10">
+                <div className="flex items-center gap-2 text-blue-100">
+                  <Activity size={16} />
+                  <span className="text-xs uppercase tracking-wide">Account</span>
+                </div>
+                <p className="mt-2 text-xl font-bold text-white">
+                  {user.isActive === false ? 'Inactive' : 'Active'}
+                </p>
+              </div>
+
+              <div className="rounded-2xl bg-white/10 p-4 ring-1 ring-white/10">
+                <div className="flex items-center gap-2 text-blue-100">
+                  <Shield size={16} />
+                  <span className="text-xs uppercase tracking-wide">KYC</span>
+                </div>
+                <p className="mt-2 text-xl font-bold text-white">
+                  {kycMeta.label}
+                </p>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2 lg:flex-col lg:items-end">
+        <div className="flex flex-wrap gap-2 xl:flex-col xl:items-end">
           <span
             className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold ring-1 ${accountMeta.className}`}
           >

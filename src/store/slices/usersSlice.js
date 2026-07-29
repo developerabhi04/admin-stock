@@ -39,10 +39,10 @@ const normalizeUser = (user = {}) => {
 
 const normalizeUserDetails = (payload = {}) => {
   const normalizedUser = normalizeUser(payload.user || {});
-  const recentTransactions = Array.isArray(payload.recentTransactions)
-    ? payload.recentTransactions
-    : Array.isArray(payload.transactions)
-      ? payload.transactions
+  const allTransactions = Array.isArray(payload.transactions)
+    ? payload.transactions
+    : Array.isArray(payload.recentTransactions)
+      ? payload.recentTransactions
       : [];
 
   const investments = Array.isArray(payload.investments) ? payload.investments : [];
@@ -50,7 +50,8 @@ const normalizeUserDetails = (payload = {}) => {
   return {
     ...payload,
     user: normalizedUser,
-    recentTransactions,
+    transactions: allTransactions,
+    recentTransactions: allTransactions,
     investments,
     portfolioSummary: payload.portfolioSummary || {},
     investmentOrders: payload.investmentOrders || {

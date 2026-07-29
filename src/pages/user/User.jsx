@@ -18,12 +18,13 @@ import {
   Loader,
   CheckCircle,
   TrendingDown,
+  TrendingUp,
   Activity,
   CalendarDays,
   Phone,
-  UserCircle2,
-  ShieldCheck,
+  ShoppingBag,
   Clock3,
+  Target,
 } from 'lucide-react';
 import Loading from '../../components/Loader';
 
@@ -37,14 +38,21 @@ const Users = () => {
   const {
     users = [],
     listStatus,
-    stats,
     totalUsers = 0,
     totalWalletBalance = 0,
     totalWithdrawals = 0,
     pendingWithdrawals = 0,
+    stats,
     filters = {},
     error,
   } = useSelector((state) => state.users);
+
+  // Global stats from aggregated endpoint
+  const totalInterestEarned = Number(stats?.totalInterestEarned || 0);
+  const totalInvestedAmountAllUsers = Number(stats?.totalInvestedAmount || 0);
+  const totalOrdersCountAllUsers = Number(stats?.totalOrdersCount || 0);
+
+
 
   const [searchTerm, setSearchTerm] = useState(filters.search || '');
   const [showFilters, setShowFilters] = useState(false);
@@ -74,19 +82,10 @@ const Users = () => {
     dispatch(fetchUserStats());
   }, [dispatch]);
 
-  const verifiedUsersOnPage = useMemo(
-    () => users.filter((user) => user.isVerified).length,
-    [users]
-  );
-
   const activeUsersOnPage = useMemo(
     () => users.filter((user) => user.isActive !== false).length,
     [users]
   );
-
-  const verifiedUsersOverall = Number(stats?.verifiedUsers || 0);
-  const kycPendingUsers = Number(stats?.kycPendingUsers || 0);
-  const avgWalletBalance = Number(stats?.avgWalletBalance || 0);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -266,20 +265,26 @@ const Users = () => {
             <Wallet className="text-green-500" size={20} />
           </div>
           <p className="mb-1 text-sm text-gray-600">Total Wallet Balance</p>
-          <p className="text-3xl font-bold text-green-600">{formatCompactLakh(totalWalletBalance)}</p>
+          <p className="text-3xl font-bold text-green-600">
+            {formatCompactLakh(totalWalletBalance)}
+          </p>
           <p className="mt-2 text-xs text-gray-500">{formatCurrency(totalWalletBalance)}</p>
         </div>
 
         <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
           <div className="mb-4 flex items-center justify-between">
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-indigo-100">
-              <ShieldCheck className="text-indigo-600" size={24} />
+            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-purple-100">
+              <TrendingUp className="text-purple-600" size={24} />
             </div>
-            <CheckCircle className="text-indigo-500" size={20} />
+            <Activity className="text-purple-500" size={20} />
           </div>
-          <p className="mb-1 text-sm text-gray-600">Verified Users</p>
-          <p className="text-3xl font-bold text-indigo-600">{verifiedUsersOverall}</p>
-          <p className="mt-2 text-xs text-gray-500">{verifiedUsersOnPage} verified in current page</p>
+          <p className="mb-1 text-sm text-gray-600">Total Interest</p>
+          <p className="text-3xl font-bold text-purple-600">
+            {formatCompactLakh(totalInterestEarned)}
+          </p>
+          <p className="mt-2 text-xs text-gray-500">
+            {formatCurrency(totalInterestEarned)} all-time, all users
+          </p>
         </div>
 
         <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
@@ -290,35 +295,52 @@ const Users = () => {
             <Clock3 className="text-orange-500" size={20} />
           </div>
           <p className="mb-1 text-sm text-gray-600">Pending Withdrawals</p>
-          <p className="text-3xl font-bold text-orange-600">{formatCompactLakh(pendingWithdrawals)}</p>
-          <p className="mt-2 text-xs text-gray-500">Total withdrawn: {formatCompactLakh(totalWithdrawals)}</p>
+          <p className="text-3xl font-bold text-orange-600">
+            {formatCompactLakh(pendingWithdrawals)}
+          </p>
+          <p className="mt-2 text-xs text-gray-500">
+            Total withdrawn: {formatCompactLakh(totalWithdrawals)}
+          </p>
+        </div>
+
+        {/* Extra global row: total invested & total orders */}
+
+        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-indigo-100">
+              <Target className="text-indigo-600" size={24} />
+            </div>
+            <Activity className="text-indigo-500" size={20} />
+          </div>
+          <p className="mb-1 text-sm text-gray-600">Total Invested (All Users)</p>
+          <p className="text-3xl font-bold text-indigo-600">
+            {formatCompactLakh(totalInvestedAmountAllUsers)}
+          </p>
+          <p className="mt-2 text-xs text-gray-500">
+            {formatCurrency(totalInvestedAmountAllUsers)} principal invested across all users
+          </p>
+        </div>
+
+        <div className="rounded-xl border border-gray-200 bg-white p-６ shadow-sm">
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-teal-100">
+              <ShoppingBag className="text-teal-600" size={24} />
+            </div>
+            <Activity className="text-teal-500" size={20} />
+          </div>
+          <p className="mb-1 text-sm text-gray-600">Total Orders / Investments</p>
+          <p className="text-3xl font-bold text-teal-600">
+            {totalOrdersCountAllUsers}
+          </p>
+          <p className="mt-2 text-xs text-gray-500">
+            All orders/investments created by all users
+          </p>
         </div>
       </div>
 
-      <div className="mb-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-        <div className="grid grid-cols-2 gap-6 md:grid-cols-4">
-          <div className="text-center">
-            <p className="text-2xl font-bold text-gray-900">{formatCompactLakh(totalWalletBalance)}</p>
-            <p className="text-xs text-gray-500">Wallet Pool</p>
-          </div>
 
-          <div className="text-center">
-            <p className="text-2xl font-bold text-indigo-600">{verifiedUsersOverall}</p>
-            <p className="text-xs text-gray-500">Verified Accounts</p>
-          </div>
 
-          <div className="text-center">
-            <p className="text-2xl font-bold text-amber-600">{kycPendingUsers}</p>
-            <p className="text-xs text-gray-500">KYC Pending</p>
-          </div>
-
-          <div className="text-center">
-            <p className="text-2xl font-bold text-emerald-600">{formatCompactLakh(avgWalletBalance)}</p>
-            <p className="text-xs text-gray-500">Average Wallet</p>
-          </div>
-        </div>
-      </div>
-
+      {/* {search + filters} */}
       <div className="mb-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-4 md:flex-row">
           <form onSubmit={handleSearch} className="flex flex-1 gap-3">
@@ -429,7 +451,10 @@ const Users = () => {
 
                   <div className="min-w-0 flex-1">
                     <h3 className="truncate font-bold">{user.fullName || 'Unknown User'}</h3>
-                    <p className="text-sm text-blue-100">{user.phoneNumber || '-'}</p>
+                    <p className="flex items-center gap-1 text-sm text-blue-100">
+                      <Phone size={12} />
+                      {user.countryCode || ''} {user.phoneNumber || '-'}
+                    </p>
                   </div>
 
                   {user.isVerified && (
@@ -439,35 +464,45 @@ const Users = () => {
 
                 <div className="grid grid-cols-1 gap-2">
                   <div className="rounded-lg bg-white/20 p-2 text-center">
-                    <p className="text-xs text-blue-100">Wallet</p>
-                    <p className="font-bold">{formatCompactLakh(user.walletBalance || 0)}</p>
+                    <p className="text-xs text-blue-100">Wallet Balance</p>
+                    <p className="font-bold">{formatCurrency(user.walletBalance || 0)}</p>
                   </div>
                 </div>
               </div>
 
               <div className="space-y-3 p-4">
-                <div className="grid grid-cols-1 gap-3">
+                <div className="grid grid-cols-2 gap-3">
                   <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-                    <div className="mb-2 flex items-center gap-2 text-gray-700">
-                      <Phone size={16} />
-                      <span className="text-xs font-medium">Phone</span>
+                    <div className="mb-1 flex items-center gap-2 text-gray-700">
+                      <TrendingUp size={14} />
+                      <span className="text-xs font-medium">Invested</span>
                     </div>
                     <p className="font-semibold text-gray-900">
-                      {user.countryCode || ''} {user.phoneNumber || '-'}
+                      {formatCurrency(user.totalInvested || 0)}
                     </p>
                   </div>
 
                   <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-                    <div className="mb-2 flex items-center gap-2 text-gray-700">
-                      <UserCircle2 size={16} />
-                      <span className="text-xs font-medium">User ID</span>
+                    <div className="mb-1 flex items-center gap-2 text-gray-700">
+                      <Wallet size={14} />
+                      <span className="text-xs font-medium">Interest Earned</span>
                     </div>
-                    <p className="break-all font-semibold text-gray-900">{user._id}</p>
+                    <p className="font-semibold text-emerald-600">
+                      {formatCurrency(user.totalInterestEarned || 0)}
+                    </p>
                   </div>
 
                   <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-                    <div className="mb-2 flex items-center gap-2 text-gray-700">
-                      <CalendarDays size={16} />
+                    <div className="mb-1 flex items-center gap-2 text-gray-700">
+                      <ShoppingBag size={14} />
+                      <span className="text-xs font-medium">Orders</span>
+                    </div>
+                    <p className="font-semibold text-gray-900">{user.ordersCount ?? 0}</p>
+                  </div>
+
+                  <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                    <div className="mb-1 flex items-center gap-2 text-gray-700">
+                      <CalendarDays size={14} />
                       <span className="text-xs font-medium">Joined</span>
                     </div>
                     <p className="font-semibold text-gray-900">
@@ -478,37 +513,6 @@ const Users = () => {
                         : '-'}
                     </p>
                   </div>
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  <span
-                    className={`rounded-full px-3 py-1 text-xs font-semibold ${user.isVerified
-                      ? 'bg-emerald-100 text-emerald-700'
-                      : 'bg-amber-100 text-amber-700'
-                      }`}
-                  >
-                    {user.isVerified ? 'Verified' : 'Unverified'}
-                  </span>
-
-                  <span
-                    className={`rounded-full px-3 py-1 text-xs font-semibold ${user.isActive !== false
-                      ? 'bg-blue-100 text-blue-700'
-                      : 'bg-red-100 text-red-700'
-                      }`}
-                  >
-                    {user.isActive !== false ? 'Active' : 'Inactive'}
-                  </span>
-
-                  <span
-                    className={`rounded-full px-3 py-1 text-xs font-semibold ${user.kycStatus === 'verified'
-                      ? 'bg-emerald-100 text-emerald-700'
-                      : user.kycStatus === 'rejected'
-                        ? 'bg-red-100 text-red-700'
-                        : 'bg-yellow-100 text-yellow-700'
-                      }`}
-                  >
-                    KYC: {user.kycStatus || 'pending'}
-                  </span>
                 </div>
               </div>
 

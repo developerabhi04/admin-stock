@@ -17,6 +17,8 @@ import PushNotifications from './pages/notification/PushNotifications';
 import IndexCategories from './pages/IndexCategories';
 import Reports from './pages/reports/Reports';
 import AdminManagement from './pages/AdminManagement';
+import UserInvestmentsPage from './components/Users/UserInvestmentsPage';
+import UserTransactionsPage from './components/Users/UserTransactionsPage';
 
 
 /**
@@ -136,6 +138,24 @@ function App() {
             }
           />
 
+          <Route
+            path="users/:userId/investments"
+            element={
+              <ProtectedRoute>
+                <UserInvestmentsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="users/:userId/transactions"
+            element={
+              <ProtectedRoute>
+                <UserTransactionsPage />
+              </ProtectedRoute>
+            }
+          />
+
+
           {/* ✅ Payment Manager - Super Admin or Allowed Admins */}
           <Route
             path="payment-manager"
@@ -197,6 +217,8 @@ function App() {
               </ProtectedRoute>
             }
           />
+
+
 
           {/* ✅ Index Categories - Super Admin or Allowed Admins */}
           <Route
