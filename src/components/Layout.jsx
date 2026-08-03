@@ -14,7 +14,8 @@ import {
   Layers,
   Menu,
   X,
-  ShieldCheckIcon
+  ShieldCheckIcon,
+  Bell
 } from 'lucide-react';
 
 const Layout = () => {
@@ -109,12 +110,12 @@ const Layout = () => {
       label: 'Users',
       description: 'Manage users'
     },
-    // {
-    //   path: '/dashboard/notifications',
-    //   icon: Bell,
-    //   label: 'Notifications',
-    //   description: 'Send push notifications'
-    // },
+    {
+      path: '/dashboard/notifications',
+      icon: Bell,
+      label: 'Notifications',
+      description: 'Send push notifications'
+    },
 
     // {
     //   path: '/dashboard/reports',
