@@ -90,4 +90,5 @@ const authSlice = createSlice({
 });
 
 export const { loginSuccess, logout, loadAdmin } = authSlice.actions;
+
 export default authSlice.reducer;

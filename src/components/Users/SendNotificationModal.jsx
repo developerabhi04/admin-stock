@@ -167,6 +167,7 @@ const SendNotificationModal = ({ userId, onClose }) => {
                             )}
                         </button>
                     </div>
+
                 </form>
             </div>
         </div>
