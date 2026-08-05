@@ -47,12 +47,9 @@ const Users = () => {
     error,
   } = useSelector((state) => state.users);
 
-  // Global stats from aggregated endpoint
   const totalInterestEarned = Number(stats?.totalInterestEarned || 0);
   const totalInvestedAmountAllUsers = Number(stats?.totalInvestedAmount || 0);
   const totalOrdersCountAllUsers = Number(stats?.totalOrdersCount || 0);
-
-
 
   const [searchTerm, setSearchTerm] = useState(filters.search || '');
   const [showFilters, setShowFilters] = useState(false);
@@ -112,7 +109,7 @@ const Users = () => {
     dispatch(fetchUserStats());
   };
 
-  const handleSendNotification = (user = null) => {
+  const openNotificationModal = (user = null) => {
     if (user) {
       setSelectedUser(user);
       setSendToAll(false);
@@ -206,16 +203,16 @@ const Users = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="mb-6 flex items-center justify-between">
+    <div className="min-h-screen bg-gray-50 p-3 sm:p-4 lg:p-6">
+      <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Users Management</h1>
-          <p className="mt-1 text-gray-600">{totalUsers} registered users</p>
+          <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">Users Management</h1>
+          <p className="mt-1 text-sm text-gray-600 sm:text-base">{totalUsers} registered users</p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <button
-            onClick={() => handleSendNotification(null)}
+            onClick={() => openNotificationModal(null)}
             className="flex items-center gap-2 rounded-xl bg-purple-600 px-4 py-2.5 font-semibold text-white shadow-sm transition hover:bg-purple-700"
             type="button"
           >
@@ -244,7 +241,7 @@ const Users = () => {
         </div>
       </div>
 
-      <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+      <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
         <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
           <div className="mb-4 flex items-center justify-between">
             <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-100">
@@ -303,8 +300,6 @@ const Users = () => {
           </p>
         </div>
 
-        {/* Extra global row: total invested & total orders */}
-
         <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
           <div className="mb-4 flex items-center justify-between">
             <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-indigo-100">
@@ -321,7 +316,7 @@ const Users = () => {
           </p>
         </div>
 
-        <div className="rounded-xl border border-gray-200 bg-white p-６ shadow-sm">
+        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
           <div className="mb-4 flex items-center justify-between">
             <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-teal-100">
               <ShoppingBag className="text-teal-600" size={24} />
@@ -338,9 +333,6 @@ const Users = () => {
         </div>
       </div>
 
-
-
-      {/* {search + filters} */}
       <div className="mb-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-4 md:flex-row">
           <form onSubmit={handleSearch} className="flex flex-1 gap-3">
@@ -437,7 +429,7 @@ const Users = () => {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
           {users.map((user) => (
             <div
               key={user._id}
@@ -527,7 +519,7 @@ const Users = () => {
                 </button>
 
                 <button
-                  onClick={() => handleSendNotification(user)}
+                  onClick={() => openNotificationModal(user)}
                   className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-purple-600 px-3 py-2 font-medium text-white transition hover:bg-purple-700"
                   type="button"
                 >
@@ -546,139 +538,143 @@ const Users = () => {
             Showing <span className="font-bold text-gray-900">{users.length}</span> of{' '}
             <span className="font-bold text-gray-900">{totalUsers}</span> users
           </p>
-          <div className="flex gap-2" />
         </div>
       )}
 
       {showNotificationModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-gray-200 p-6">
-              <div>
-                <h3 className="flex items-center gap-2 text-xl font-bold text-gray-900">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-2 sm:p-4 backdrop-blur-sm">
+          <div className="flex max-h-[92vh] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-gray-200 px-4 py-4 sm:px-6">
+              <div className="min-w-0">
+                <h3 className="flex items-center gap-2 text-lg font-bold text-gray-900 sm:text-xl">
                   {sendToAll ? (
-                    <Bell className="text-purple-600" size={24} />
+                    <Bell className="text-purple-600" size={22} />
                   ) : (
-                    <Send className="text-purple-600" size={24} />
+                    <Send className="text-purple-600" size={22} />
                   )}
-                  {sendToAll ? 'Broadcast to All' : 'Send Notification'}
+                  <span className="truncate">{sendToAll ? 'Broadcast to All' : 'Send Notification'}</span>
                 </h3>
-                <p className="mt-1 text-sm text-gray-600">
+                <p className="mt-1 truncate text-sm text-gray-600">
                   {sendToAll ? `To: All ${totalUsers} users` : `To: ${selectedUser?.fullName}`}
                 </p>
               </div>
 
               <button
                 onClick={resetNotificationModal}
-                className="text-gray-400 transition hover:text-gray-600"
+                className="rounded-lg p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
                 type="button"
+                aria-label="Close modal"
               >
-                <X size={24} />
+                <X size={22} />
               </button>
             </div>
 
-            <form onSubmit={handleSubmitNotification} className="space-y-4 p-6">
-              {!sendToAll && selectedUser && (
-                <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-purple-600 text-lg font-bold text-white">
-                      {selectedUser.fullName?.charAt(0).toUpperCase()}
+            <form onSubmit={handleSubmitNotification} className="flex-1 overflow-y-auto px-4 py-4 sm:px-6">
+              <div className="space-y-4">
+                {!sendToAll && selectedUser && (
+                  <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-purple-600 text-lg font-bold text-white">
+                        {selectedUser.fullName?.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate font-bold text-gray-900">{selectedUser.fullName}</p>
+                        <p className="truncate text-sm text-gray-600">{selectedUser.phoneNumber}</p>
+                      </div>
                     </div>
+                  </div>
+                )}
+
+                {sendToAll && (
+                  <div className="flex items-start gap-3 rounded-xl border border-yellow-200 bg-yellow-50 p-4">
+                    <AlertCircle className="mt-0.5 shrink-0 text-yellow-600" size={20} />
                     <div>
-                      <p className="font-bold text-gray-900">{selectedUser.fullName}</p>
-                      <p className="text-sm text-gray-600">{selectedUser.phoneNumber}</p>
+                      <p className="font-bold text-yellow-900">Broadcasting to {totalUsers} users</p>
+                      <p className="mt-1 text-sm text-yellow-700">
+                        This will send a notification to all registered users
+                      </p>
                     </div>
                   </div>
+                )}
+
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-gray-700">Type</label>
+                  <select
+                    value={notificationData.type}
+                    onChange={(e) =>
+                      setNotificationData((prev) => ({ ...prev, type: e.target.value }))
+                    }
+                    className="w-full rounded-xl border border-gray-200 px-4 py-3 transition focus:border-purple-500 focus:ring-2 focus:ring-purple-100"
+                  >
+                    <option value="general">📢 General</option>
+                    <option value="payment">💰 Payment</option>
+                    <option value="withdrawal">💸 Withdrawal</option>
+                    <option value="order">📦 Order Update</option>
+                    <option value="promotion">🎁 Promotion</option>
+                  </select>
                 </div>
-              )}
 
-              {sendToAll && (
-                <div className="flex items-start gap-3 rounded-xl border border-yellow-200 bg-yellow-50 p-4">
-                  <AlertCircle className="mt-0.5 shrink-0 text-yellow-600" size={20} />
-                  <div>
-                    <p className="font-bold text-yellow-900">Broadcasting to {totalUsers} users</p>
-                    <p className="mt-1 text-sm text-yellow-700">
-                      This will send a notification to all registered users
-                    </p>
-                  </div>
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-gray-700">Title</label>
+                  <input
+                    type="text"
+                    value={notificationData.title}
+                    onChange={(e) =>
+                      setNotificationData((prev) => ({ ...prev, title: e.target.value }))
+                    }
+                    className="w-full rounded-xl border border-gray-200 px-4 py-3 transition focus:border-purple-500 focus:ring-2 focus:ring-purple-100"
+                    placeholder="Enter notification title"
+                    maxLength={50}
+                    required
+                  />
+                  <p className="mt-1 text-xs text-gray-500">{notificationData.title.length}/50</p>
                 </div>
-              )}
 
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">Type</label>
-                <select
-                  value={notificationData.type}
-                  onChange={(e) =>
-                    setNotificationData((prev) => ({ ...prev, type: e.target.value }))
-                  }
-                  className="w-full rounded-xl border border-gray-200 px-4 py-3 transition focus:border-purple-500 focus:ring-2 focus:ring-purple-100"
-                >
-                  <option value="general">📢 General</option>
-                  <option value="payment">💰 Payment</option>
-                  <option value="withdrawal">💸 Withdrawal</option>
-                  <option value="order">📦 Order Update</option>
-                  <option value="promotion">🎁 Promotion</option>
-                </select>
-              </div>
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-gray-700">Message</label>
+                  <textarea
+                    value={notificationData.message}
+                    onChange={(e) =>
+                      setNotificationData((prev) => ({ ...prev, message: e.target.value }))
+                    }
+                    className="min-h-[120px] w-full resize-y rounded-xl border border-gray-200 px-4 py-3 transition focus:border-purple-500 focus:ring-2 focus:ring-purple-100 sm:min-h-[140px]"
+                    rows="5"
+                    placeholder="Enter notification message"
+                    maxLength={200}
+                    required
+                  />
+                  <p className="mt-1 text-xs text-gray-500">{notificationData.message.length}/200</p>
+                </div>
 
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">Title</label>
-                <input
-                  type="text"
-                  value={notificationData.title}
-                  onChange={(e) =>
-                    setNotificationData((prev) => ({ ...prev, title: e.target.value }))
-                  }
-                  className="w-full rounded-xl border border-gray-200 px-4 py-3 transition focus:border-purple-500 focus:ring-2 focus:ring-purple-100"
-                  placeholder="Enter notification title"
-                  maxLength={50}
-                  required
-                />
-                <p className="mt-1 text-xs text-gray-500">{notificationData.title.length}/50</p>
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">Message</label>
-                <textarea
-                  value={notificationData.message}
-                  onChange={(e) =>
-                    setNotificationData((prev) => ({ ...prev, message: e.target.value }))
-                  }
-                  className="w-full resize-none rounded-xl border border-gray-200 px-4 py-3 transition focus:border-purple-500 focus:ring-2 focus:ring-purple-100"
-                  rows="4"
-                  placeholder="Enter notification message"
-                  maxLength={200}
-                  required
-                />
-                <p className="mt-1 text-xs text-gray-500">{notificationData.message.length}/200</p>
-              </div>
-
-              {(notificationData.title || notificationData.message) && (
-                <div className="rounded-xl border border-purple-200 bg-purple-50 p-4">
-                  <p className="mb-3 text-sm font-medium text-purple-700">Preview:</p>
-                  <div className="rounded-lg bg-white p-4 shadow-sm">
-                    <div className="flex items-start gap-3">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-purple-100">
-                        <Bell className="text-purple-600" size={18} />
-                      </div>
-                      <div className="flex-1">
-                        <div className="mb-1 flex items-center gap-2">
-                          <h4 className="font-semibold text-gray-900">
-                            {notificationData.title || 'Title'}
-                          </h4>
-                          <span className="text-lg">{getTypeIcon(notificationData.type)}</span>
+                {(notificationData.title || notificationData.message) && (
+                  <div className="rounded-xl border border-purple-200 bg-purple-50 p-4">
+                    <p className="mb-3 text-sm font-medium text-purple-700">Preview:</p>
+                    <div className="rounded-lg bg-white p-4 shadow-sm">
+                      <div className="flex items-start gap-3">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-purple-100">
+                          <Bell className="text-purple-600" size={18} />
                         </div>
-                        <p className="text-sm text-gray-600">
-                          {notificationData.message || 'Message'}
-                        </p>
-                        <p className="mt-1 text-xs text-gray-400">Just now</p>
+                        <div className="min-w-0 flex-1">
+                          <div className="mb-1 flex items-center gap-2">
+                            <h4 className="truncate font-semibold text-gray-900">
+                              {notificationData.title || 'Title'}
+                            </h4>
+                            <span className="text-lg">{getTypeIcon(notificationData.type)}</span>
+                          </div>
+                          <p className="break-words text-sm text-gray-600">
+                            {notificationData.message || 'Message'}
+                          </p>
+                          <p className="mt-1 text-xs text-gray-400">Just now</p>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
+            </form>
 
-              <div className="flex gap-3 pt-4">
+            <div className="border-t border-gray-200 bg-white px-4 py-4 sm:px-6">
+              <div className="flex gap-3">
                 <button
                   type="button"
                   onClick={resetNotificationModal}
@@ -689,7 +685,9 @@ const Users = () => {
 
                 <button
                   type="submit"
+                  form=""
                   disabled={sendingNotification}
+                  onClick={handleSubmitNotification}
                   className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-purple-600 py-3 font-semibold text-white transition hover:bg-purple-700 disabled:opacity-50"
                 >
                   {sendingNotification ? (
@@ -705,7 +703,7 @@ const Users = () => {
                   )}
                 </button>
               </div>
-            </form>
+            </div>
           </div>
         </div>
       )}
