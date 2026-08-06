@@ -19,6 +19,7 @@ import Reports from './pages/reports/Reports';
 import AdminManagement from './pages/AdminManagement';
 import UserInvestmentsPage from './components/Users/UserInvestmentsPage';
 import UserTransactionsPage from './components/Users/UserTransactionsPage';
+import ReferralManagement from './pages/referral/ReferralManagement';
 
 
 /**
@@ -270,6 +271,15 @@ function App() {
             }
           />
         </Route>
+
+        <Route
+          path="referrals"
+          element={
+            <ProtectedRoute>
+              <ReferralManagement />
+            </ProtectedRoute>
+          }
+        />
 
         <Route path="payment-manager/config" element={<PaymentManager defaultTab="config" />} />
 

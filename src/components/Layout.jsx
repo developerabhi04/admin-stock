@@ -15,7 +15,8 @@ import {
   Menu,
   X,
   ShieldCheckIcon,
-  Bell
+  Bell,
+  Gift,
 } from 'lucide-react';
 
 const Layout = () => {
@@ -109,6 +110,12 @@ const Layout = () => {
       icon: Users,
       label: 'Users',
       description: 'Manage users'
+    },
+    {
+      path: '/dashboard/referrals',
+      icon: Gift,
+      label: 'Referrals',
+      description: 'Manage invite and earn referrals',
     },
     {
       path: '/dashboard/notifications',

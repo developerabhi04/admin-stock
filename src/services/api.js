@@ -124,7 +124,14 @@ export const adminAPI = {
   deleteBanner: (bannerId) => api.delete(`/banners/${bannerId}`),
   toggleBannerStatus: (bannerId) => api.patch(`/banners/${bannerId}/toggle`),
 
+  // Referral management
+  getAllReferrals: (params = {}) =>
+    api.get('/referral/admin/all', {
+      params,
+    }),
 
+  getReferralStats: () =>
+    api.get('/referral/admin/stats'),
 
 
   sendNotificationToAll: (data) => api.post('/notifications/admin/send-all', data),
