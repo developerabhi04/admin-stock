@@ -1,7 +1,15 @@
 import { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import {
+  BrowserRouter,
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+} from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
+
 import { loadAdmin } from './store/slices/authSlice';
+
 import Login from './pages/Login';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
@@ -21,77 +29,77 @@ import UserInvestmentsPage from './components/Users/UserInvestmentsPage';
 import UserTransactionsPage from './components/Users/UserTransactionsPage';
 import ReferralManagement from './pages/referral/ReferralManagement';
 
+const ProtectedRoute = ({
+  children,
+  requireSuperAdmin = false,
+}) => {
+  const {
+    isAuthenticated,
+    loading,
+    admin,
+  } = useSelector((state) => state.auth);
 
-/**
- * ✅ FIXED: Check if admin has access to current route (including sub-routes)
- */
-const ProtectedRoute = ({ children, requireSuperAdmin = false }) => {
-  const { isAuthenticated, loading, admin } = useSelector((state) => state.auth);
   const location = useLocation();
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-blue-500" />
       </div>
     );
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" />;
+    return (
+      <Navigate
+        to="/login"
+        state={{ from: location }}
+        replace
+      />
+    );
   }
 
-  // ✅ Super admin has access to everything
   if (admin?.role === 'super_admin') {
     return children;
   }
 
-  // ✅ If route requires super admin and user is not super admin
   if (requireSuperAdmin) {
-    console.warn('❌ Access denied: Super admin required for this route');
-    return <Navigate to="/dashboard/payment-manager" replace />;
+    return (
+      <Navigate
+        to="/dashboard/payment-manager"
+        replace
+      />
+    );
   }
 
-  // ✅ For regular admins, check if current path is in their allowedRoutes
   const currentPath = location.pathname;
   const allowedRoutes = admin?.allowedRoutes || [];
 
-  console.log('🔐 Route Check:', {
-    currentPath,
-    allowedRoutes,
-    hasAccess: allowedRoutes.includes(currentPath)
-  });
-
-  // ✅ NEW: Check both exact match AND parent route match
-  const hasAccess = allowedRoutes.some(route => {
-    // Exact match
-    if (currentPath === route) return true;
-
-    // Parent route match (e.g., /dashboard/market includes /dashboard/market/stocks)
-    if (currentPath.startsWith(route + '/')) return true;
-
-    return false;
-  });
-
-  console.log('🔐 Access check result:', hasAccess);
-
-  // Check if admin has access to this specific route
-  if (allowedRoutes.length > 0 && !hasAccess) {
-    console.warn('❌ Access denied to:', currentPath);
-
-    // Redirect to first allowed route
-    if (allowedRoutes.length > 0) {
-      return <Navigate to={allowedRoutes[0]} replace />;
+  const hasAccess = allowedRoutes.some((route) => {
+    if (currentPath === route) {
+      return true;
     }
 
-    return <Navigate to="/dashboard/payment-manager" replace />;
+    return currentPath.startsWith(`${route}/`);
+  });
+
+  if (!hasAccess) {
+    const firstAllowedRoute = allowedRoutes.find((route) =>
+      route.startsWith('/dashboard')
+    );
+
+    return (
+      <Navigate
+        to={firstAllowedRoute || '/login'}
+        replace
+      />
+    );
   }
 
   return children;
 };
 
-
-function App() {
+const App = () => {
   const dispatch = useDispatch();
 
   useEffect(() => {
@@ -101,7 +109,10 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/login" element={<Login />} />
+        <Route
+          path="/login"
+          element={<Login />}
+        />
 
         <Route
           path="/dashboard"
@@ -111,17 +122,15 @@ function App() {
             </ProtectedRoute>
           }
         >
-          {/* ✅ Dashboard - Super Admin Only */}
           <Route
             index
             element={
-              <ProtectedRoute requireSuperAdmin={true}>
+              <ProtectedRoute requireSuperAdmin>
                 <Dashboard />
               </ProtectedRoute>
             }
           />
 
-          {/* ✅ User Management - Super Admin or Allowed Admins */}
           <Route
             path="users"
             element={
@@ -130,6 +139,7 @@ function App() {
               </ProtectedRoute>
             }
           />
+
           <Route
             path="users/:userId"
             element={
@@ -147,6 +157,7 @@ function App() {
               </ProtectedRoute>
             }
           />
+
           <Route
             path="users/:userId/transactions"
             element={
@@ -156,8 +167,6 @@ function App() {
             }
           />
 
-
-          {/* ✅ Payment Manager - Super Admin or Allowed Admins */}
           <Route
             path="payment-manager"
             element={
@@ -166,6 +175,7 @@ function App() {
               </ProtectedRoute>
             }
           />
+
           <Route
             path="payment-manager/payments"
             element={
@@ -174,6 +184,7 @@ function App() {
               </ProtectedRoute>
             }
           />
+
           <Route
             path="payment-manager/withdrawals"
             element={
@@ -183,7 +194,15 @@ function App() {
             }
           />
 
-          {/* ✅ Transactions - Super Admin or Allowed Admins */}
+          <Route
+            path="payment-manager/config"
+            element={
+              <ProtectedRoute>
+                <PaymentManager defaultTab="config" />
+              </ProtectedRoute>
+            }
+          />
+
           <Route
             path="transactions"
             element={
@@ -193,7 +212,6 @@ function App() {
             }
           />
 
-          {/* ✅ Market Data - Super Admin or Allowed Admins */}
           <Route
             path="market"
             element={
@@ -202,6 +220,7 @@ function App() {
               </ProtectedRoute>
             }
           />
+
           <Route
             path="market/stocks"
             element={
@@ -210,6 +229,7 @@ function App() {
               </ProtectedRoute>
             }
           />
+
           <Route
             path="market/indices"
             element={
@@ -219,9 +239,6 @@ function App() {
             }
           />
 
-
-
-          {/* ✅ Index Categories - Super Admin or Allowed Admins */}
           <Route
             path="index-categories"
             element={
@@ -231,7 +248,6 @@ function App() {
             }
           />
 
-          {/* ✅ Banner Management - Super Admin or Allowed Admins */}
           <Route
             path="banners"
             element={
@@ -241,7 +257,6 @@ function App() {
             }
           />
 
-          {/* ✅ Push Notifications - Super Admin or Allowed Admins */}
           <Route
             path="notifications"
             element={
@@ -251,7 +266,6 @@ function App() {
             }
           />
 
-          {/* ✅ Reports & Analytics - Super Admin or Allowed Admins */}
           <Route
             path="reports"
             element={
@@ -261,32 +275,48 @@ function App() {
             }
           />
 
-          {/* ✅ Admin Management - Super Admin ONLY */}
           <Route
             path="admins"
             element={
-              <ProtectedRoute requireSuperAdmin={true}>
+              <ProtectedRoute requireSuperAdmin>
                 <AdminManagement />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* This creates /dashboard/referrals */}
+          <Route
+            path="referrals"
+            element={
+              <ProtectedRoute>
+                <ReferralManagement />
               </ProtectedRoute>
             }
           />
         </Route>
 
         <Route
-          path="referrals"
+          path="/"
           element={
-            <ProtectedRoute>
-              <ReferralManagement />
-            </ProtectedRoute>
+            <Navigate
+              to="/dashboard"
+              replace
+            />
           }
         />
 
-        <Route path="payment-manager/config" element={<PaymentManager defaultTab="config" />} />
-
-        <Route path="/" element={<Navigate to="/dashboard" />} />
+        <Route
+          path="*"
+          element={
+            <Navigate
+              to="/dashboard"
+              replace
+            />
+          }
+        />
       </Routes>
     </BrowserRouter>
   );
-}
+};
 
 export default App;
