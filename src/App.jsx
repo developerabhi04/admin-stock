@@ -29,6 +29,11 @@ import UserInvestmentsPage from './components/Users/UserInvestmentsPage';
 import UserTransactionsPage from './components/Users/UserTransactionsPage';
 import ReferralManagement from './pages/referral/ReferralManagement';
 
+import { connectAdminSocket } from './services/socket';
+import { fetchPendingPayments } from './store/slices/paymentsSlice';
+import { fetchPendingWithdrawals } from './store/slices/withdrawalsSlice';
+
+
 const ProtectedRoute = ({
   children,
   requireSuperAdmin = false,
@@ -101,10 +106,64 @@ const ProtectedRoute = ({
 
 const App = () => {
   const dispatch = useDispatch();
+  const { isAuthenticated, loading, token } = useSelector((state) => state.auth);
 
   useEffect(() => {
     dispatch(loadAdmin());
   }, [dispatch]);
+
+
+  // 🔔 Setup socket + desktop notifications when admin is ready
+  useEffect(() => {
+    if (loading || !isAuthenticated || !token) return;
+
+    // Ask once for browser notification permission
+    if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+      Notification.requestPermission().catch(() => { });
+    }
+
+    const socket = connectAdminSocket();
+    if (!socket) return;
+
+    const handleDeposit = (payload) => {
+      console.log('💰 New deposit request:', payload);
+
+      if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+        const n = new Notification('New Deposit Request', {
+          body: `₹${payload.amount} via ${payload.gateway} (UTR: ${payload.utrNumber})`,
+          icon: '/favicon.ico',
+        });
+        n.onclick = () => window.focus();
+      }
+
+      // Auto-refresh pending deposits
+      dispatch(fetchPendingPayments({ page: 1, limit: 20 }));
+    };
+
+    const handleWithdrawal = (payload) => {
+      console.log('🏦 New withdrawal request:', payload);
+
+      if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+        const n = new Notification('New Withdrawal Request', {
+          body: `₹${payload.amount} to ${payload.bankName} • ****${payload.accountLast4}`,
+          icon: '/favicon.ico',
+        });
+        n.onclick = () => window.focus();
+      }
+
+      // Auto-refresh pending withdrawals
+      dispatch(fetchPendingWithdrawals({ page: 1, limit: 20 }));
+    };
+
+    socket.on('new_deposit_request', handleDeposit);
+    socket.on('new_withdrawal_request', handleWithdrawal);
+
+    return () => {
+      socket.off('new_deposit_request', handleDeposit);
+      socket.off('new_withdrawal_request', handleWithdrawal);
+      // we keep the connection open; don't disconnect here unless you want to
+    };
+  }, [loading, isAuthenticated, token, dispatch]);
 
   return (
     <BrowserRouter>
