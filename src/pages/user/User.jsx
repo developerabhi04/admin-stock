@@ -1,6 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchUsers, fetchUserStats, setFilters } from '../../store/slices/usersSlice';
+import {
+  fetchUsers,
+  fetchUserStats,
+  setFilters,
+  deleteUser,
+  resetDeleteStatus,
+  clearDeleteError,
+} from '../../store/slices/usersSlice';
 import { useNavigate } from 'react-router-dom';
 import { adminAPI } from '../../services/api';
 import {
@@ -25,6 +32,8 @@ import {
   ShoppingBag,
   Clock3,
   Target,
+  Trash2,
+  ShieldAlert,
 } from 'lucide-react';
 import Loading from '../../components/Loader';
 
@@ -45,6 +54,8 @@ const Users = () => {
     stats,
     filters = {},
     error,
+    deleteStatus,
+    deleteError,
   } = useSelector((state) => state.users);
 
   const totalInterestEarned = Number(stats?.totalInterestEarned || 0);
@@ -62,6 +73,12 @@ const Users = () => {
     message: '',
     type: 'general',
   });
+
+  // Delete modal state
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [userToDelete, setUserToDelete] = useState(null);
+  const [confirmText, setConfirmText] = useState('');
+  const [deletingUserId, setDeletingUserId] = useState(null);
 
   useEffect(() => {
     dispatch(
@@ -176,6 +193,45 @@ const Users = () => {
 
   const exportToCSV = () => {
     alert('Export functionality coming soon!');
+  };
+
+  // Delete flow
+  const openDeleteModal = (user) => {
+    setUserToDelete(user);
+    setConfirmText('');
+    dispatch(clearDeleteError());
+    setShowDeleteModal(true);
+  };
+
+  const closeDeleteModal = () => {
+    setShowDeleteModal(false);
+    setUserToDelete(null);
+    setConfirmText('');
+    setDeletingUserId(null);
+    dispatch(resetDeleteStatus());
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!userToDelete?._id) return;
+
+    const expected = (userToDelete.fullName || '').trim().toLowerCase();
+    if (confirmText.trim().toLowerCase() !== expected) {
+      alert('Name does not match. Please type the exact full name to confirm.');
+      return;
+    }
+
+    try {
+      setDeletingUserId(userToDelete._id);
+      const result = await dispatch(deleteUser(userToDelete._id)).unwrap();
+      alert(`✅ ${userToDelete.fullName} and all related data deleted successfully.`);
+      closeDeleteModal();
+      // refresh stats since totals changed
+      dispatch(fetchUserStats());
+    } catch (err) {
+      alert(err || 'Failed to delete user');
+    } finally {
+      setDeletingUserId(null);
+    }
   };
 
   if (listStatus === 'loading') {
@@ -508,7 +564,7 @@ const Users = () => {
                 </div>
               </div>
 
-              <div className="flex gap-2 border-t border-gray-200 bg-gray-50 p-3">
+              <div className="flex flex-wrap gap-2 border-t border-gray-200 bg-gray-50 p-3">
                 <button
                   onClick={() => navigate(`/dashboard/users/${user._id}`)}
                   className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-blue-600 px-3 py-2 font-medium text-white transition hover:bg-blue-700"
@@ -525,6 +581,20 @@ const Users = () => {
                 >
                   <Send size={16} />
                   Notify
+                </button>
+
+                <button
+                  onClick={() => openDeleteModal(user)}
+                  disabled={deletingUserId === user._id}
+                  className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-red-600 px-3 py-2 font-medium text-white transition hover:bg-red-700 disabled:opacity-50"
+                  type="button"
+                >
+                  {deletingUserId === user._id ? (
+                    <Loader className="animate-spin" size={16} />
+                  ) : (
+                    <Trash2 size={16} />
+                  )}
+                  Delete
                 </button>
               </div>
             </div>
@@ -699,6 +769,111 @@ const Users = () => {
                     <>
                       {sendToAll ? <Bell size={18} /> : <Send size={18} />}
                       {sendToAll ? 'Broadcast' : 'Send'}
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDeleteModal && userToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-2 sm:p-4 backdrop-blur-sm">
+          <div className="flex w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-gray-200 px-4 py-4 sm:px-6">
+              <div className="flex items-center gap-2">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
+                  <ShieldAlert className="text-red-600" size={22} />
+                </div>
+                <h3 className="text-lg font-bold text-gray-900 sm:text-xl">Delete User</h3>
+              </div>
+
+              <button
+                onClick={closeDeleteModal}
+                className="rounded-lg p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
+                type="button"
+                aria-label="Close modal"
+              >
+                <X size={22} />
+              </button>
+            </div>
+
+            <div className="space-y-4 px-4 py-4 sm:px-6">
+              <div className="flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 p-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-600 text-lg font-bold text-white">
+                  {userToDelete.fullName?.charAt(0)?.toUpperCase() || 'U'}
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate font-bold text-gray-900">{userToDelete.fullName}</p>
+                  <p className="truncate text-sm text-gray-600">{userToDelete.phoneNumber}</p>
+                  <p className="text-sm font-medium text-gray-700">
+                    Wallet: {formatCurrency(userToDelete.walletBalance || 0)}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4">
+                <AlertCircle className="mt-0.5 shrink-0 text-red-600" size={20} />
+                <div>
+                  <p className="font-bold text-red-900">This action is permanent</p>
+                  <p className="mt-1 text-sm text-red-700">
+                    Deleting this user will permanently remove their profile, bank accounts,
+                    all deposits, withdrawals, transactions, and investment/order history.
+                    This cannot be undone.
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-gray-700">
+                  Type <span className="font-bold text-gray-900">{userToDelete.fullName}</span> to confirm
+                </label>
+                <input
+                  type="text"
+                  value={confirmText}
+                  onChange={(e) => setConfirmText(e.target.value)}
+                  className="w-full rounded-xl border border-gray-200 px-4 py-3 transition focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                  placeholder="Enter full name exactly"
+                  autoFocus
+                />
+              </div>
+
+              {deleteError && (
+                <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                  {deleteError}
+                </div>
+              )}
+            </div>
+
+            <div className="border-t border-gray-200 bg-white px-4 py-4 sm:px-6">
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={closeDeleteModal}
+                  className="flex-1 rounded-xl bg-gray-200 py-3 font-semibold text-gray-800 transition hover:bg-gray-300"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleConfirmDelete}
+                  disabled={
+                    deleteStatus === 'loading' ||
+                    confirmText.trim().toLowerCase() !== (userToDelete.fullName || '').trim().toLowerCase()
+                  }
+                  className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-red-600 py-3 font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {deleteStatus === 'loading' ? (
+                    <>
+                      <Loader className="animate-spin" size={18} />
+                      Deleting...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 size={18} />
+                      Delete Permanently
                     </>
                   )}
                 </button>

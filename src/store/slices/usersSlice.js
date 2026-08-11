@@ -17,8 +17,10 @@ const initialState = {
   detailsStatus: 'idle',
   statsStatus: 'idle',
   balanceUpdateStatus: 'idle',
+  deleteStatus: 'idle',
 
   error: null,
+  deleteError: null,
   filters: {
     search: '',
     sortBy: 'createdAt',
@@ -149,6 +151,21 @@ export const updateUserBalance = createAsyncThunk(
   }
 );
 
+export const deleteUser = createAsyncThunk(
+  'users/delete',
+  async (userId, { rejectWithValue }) => {
+    try {
+      const response = await adminAPI.deleteUser(userId);
+      return {
+        userId,
+        data: response?.data?.data || {},
+      };
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to delete user');
+    }
+  }
+);
+
 const usersSlice = createSlice({
   name: 'users',
   initialState,
@@ -159,12 +176,18 @@ const usersSlice = createSlice({
     clearError: (state) => {
       state.error = null;
     },
+    clearDeleteError: (state) => {
+      state.deleteError = null;
+    },
     clearUserDetails: (state) => {
       state.userDetails = null;
       state.detailsStatus = 'idle';
     },
     resetBalanceUpdateStatus: (state) => {
       state.balanceUpdateStatus = 'idle';
+    },
+    resetDeleteStatus: (state) => {
+      state.deleteStatus = 'idle';
     },
   },
   extraReducers: (builder) => {
@@ -243,6 +266,28 @@ const usersSlice = createSlice({
       .addCase(updateUserBalance.rejected, (state, action) => {
         state.balanceUpdateStatus = 'failed';
         state.error = action.payload;
+      })
+
+      .addCase(deleteUser.pending, (state) => {
+        state.deleteStatus = 'loading';
+        state.deleteError = null;
+      })
+      .addCase(deleteUser.fulfilled, (state, action) => {
+        state.deleteStatus = 'succeeded';
+
+        const { userId } = action.payload;
+
+        state.users = state.users.filter((u) => (u._id || u.id) !== userId);
+        state.totalUsers = Math.max(0, state.totalUsers - 1);
+
+        if ((state.userDetails?.user?._id || state.userDetails?.user?.id) === userId) {
+          state.userDetails = null;
+          state.detailsStatus = 'idle';
+        }
+      })
+      .addCase(deleteUser.rejected, (state, action) => {
+        state.deleteStatus = 'failed';
+        state.deleteError = action.payload;
       });
   },
 });
@@ -250,8 +295,10 @@ const usersSlice = createSlice({
 export const {
   setFilters,
   clearError,
+  clearDeleteError,
   clearUserDetails,
   resetBalanceUpdateStatus,
+  resetDeleteStatus,
 } = usersSlice.actions;
 
 export default usersSlice.reducer;
