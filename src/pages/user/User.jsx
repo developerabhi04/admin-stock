@@ -23,17 +23,16 @@ import {
   X,
   Bell,
   Loader,
-  CheckCircle,
-  TrendingDown,
+  CheckCircle2,
   TrendingUp,
-  Activity,
   CalendarDays,
   Phone,
-  ShoppingBag,
-  Clock3,
-  Target,
   Trash2,
   ShieldAlert,
+  ArrowUpDown,
+  ChevronUp,
+  ChevronDown,
+  ShieldCheck,
 } from 'lucide-react';
 import Loading from '../../components/Loader';
 
@@ -49,8 +48,6 @@ const Users = () => {
     listStatus,
     totalUsers = 0,
     totalWalletBalance = 0,
-    totalWithdrawals = 0,
-    pendingWithdrawals = 0,
     stats,
     filters = {},
     error,
@@ -58,9 +55,9 @@ const Users = () => {
     deleteError,
   } = useSelector((state) => state.users);
 
+  const verifiedUsers = Number(stats?.verifiedUsers || 0);
   const totalInterestEarned = Number(stats?.totalInterestEarned || 0);
   const totalInvestedAmountAllUsers = Number(stats?.totalInvestedAmount || 0);
-  const totalOrdersCountAllUsers = Number(stats?.totalOrdersCount || 0);
 
   const [searchTerm, setSearchTerm] = useState(filters.search || '');
   const [showFilters, setShowFilters] = useState(false);
@@ -74,7 +71,6 @@ const Users = () => {
     type: 'general',
   });
 
-  // Delete modal state
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [userToDelete, setUserToDelete] = useState(null);
   const [confirmText, setConfirmText] = useState('');
@@ -96,11 +92,6 @@ const Users = () => {
     dispatch(fetchUserStats());
   }, [dispatch]);
 
-  const activeUsersOnPage = useMemo(
-    () => users.filter((user) => user.isActive !== false).length,
-    [users]
-  );
-
   const handleSearch = (e) => {
     e.preventDefault();
     dispatch(setFilters({ search: searchTerm, sortBy: filters.sortBy, sortOrder: filters.sortOrder }));
@@ -109,7 +100,6 @@ const Users = () => {
   const handleSort = (field) => {
     const newOrder =
       filters.sortBy === field && filters.sortOrder === 'desc' ? 'asc' : 'desc';
-
     dispatch(setFilters({ sortBy: field, sortOrder: newOrder, search: filters.search || '' }));
   };
 
@@ -141,11 +131,7 @@ const Users = () => {
     setShowNotificationModal(false);
     setSelectedUser(null);
     setSendToAll(false);
-    setNotificationData({
-      title: '',
-      message: '',
-      type: 'general',
-    });
+    setNotificationData({ title: '', message: '', type: 'general' });
   };
 
   const handleSubmitNotification = async (e) => {
@@ -195,7 +181,6 @@ const Users = () => {
     alert('Export functionality coming soon!');
   };
 
-  // Delete flow
   const openDeleteModal = (user) => {
     setUserToDelete(user);
     setConfirmText('');
@@ -222,16 +207,38 @@ const Users = () => {
 
     try {
       setDeletingUserId(userToDelete._id);
-      const result = await dispatch(deleteUser(userToDelete._id)).unwrap();
+      await dispatch(deleteUser(userToDelete._id)).unwrap();
       alert(`✅ ${userToDelete.fullName} and all related data deleted successfully.`);
       closeDeleteModal();
-      // refresh stats since totals changed
       dispatch(fetchUserStats());
     } catch (err) {
       alert(err || 'Failed to delete user');
     } finally {
       setDeletingUserId(null);
     }
+  };
+
+  const SortHeader = ({ field, label, className = '' }) => {
+    const isActive = filters.sortBy === field;
+    return (
+      <th
+        onClick={() => handleSort(field)}
+        className={`cursor-pointer select-none px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 transition hover:text-gray-800 ${className}`}
+      >
+        <div className="flex items-center gap-1.5">
+          {label}
+          {isActive ? (
+            filters.sortOrder === 'asc' ? (
+              <ChevronUp size={13} className="text-blue-600" />
+            ) : (
+              <ChevronDown size={13} className="text-blue-600" />
+            )
+          ) : (
+            <ArrowUpDown size={12} className="text-gray-300" />
+          )}
+        </div>
+      </th>
+    );
   };
 
   if (listStatus === 'loading') {
@@ -260,6 +267,7 @@ const Users = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 p-3 sm:p-4 lg:p-6">
+      {/* Header */}
       <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">Users Management</h1>
@@ -297,100 +305,46 @@ const Users = () => {
         </div>
       </div>
 
-      <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
-        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-          <div className="mb-4 flex items-center justify-between">
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-100">
-              <UsersIcon className="text-blue-600" size={24} />
-            </div>
-            <Activity className="text-blue-500" size={20} />
+      {/* Stat cards - clean, non-redundant */}
+      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+          <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-lg bg-blue-100">
+            <UsersIcon className="text-blue-600" size={22} />
           </div>
-          <p className="mb-1 text-sm text-gray-600">Total Users</p>
-          <p className="text-3xl font-bold text-gray-900">{totalUsers}</p>
-          <p className="mt-2 text-xs text-gray-500">{activeUsersOnPage} active in current page</p>
+          <p className="text-sm text-gray-600">Total Users</p>
+          <p className="mt-1 text-2xl font-bold text-gray-900">{totalUsers}</p>
         </div>
 
-        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-          <div className="mb-4 flex items-center justify-between">
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-green-100">
-              <Wallet className="text-green-600" size={24} />
-            </div>
-            <Wallet className="text-green-500" size={20} />
+        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+          <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-lg bg-emerald-100">
+            <ShieldCheck className="text-emerald-600" size={22} />
           </div>
-          <p className="mb-1 text-sm text-gray-600">Total Wallet Balance</p>
-          <p className="text-3xl font-bold text-green-600">
-            {formatCompactLakh(totalWalletBalance)}
-          </p>
-          <p className="mt-2 text-xs text-gray-500">{formatCurrency(totalWalletBalance)}</p>
+          <p className="text-sm text-gray-600">Verified Users</p>
+          <p className="mt-1 text-2xl font-bold text-emerald-600">{verifiedUsers}</p>
         </div>
 
-        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-          <div className="mb-4 flex items-center justify-between">
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-purple-100">
-              <TrendingUp className="text-purple-600" size={24} />
-            </div>
-            <Activity className="text-purple-500" size={20} />
+        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+          <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-lg bg-green-100">
+            <Wallet className="text-green-600" size={22} />
           </div>
-          <p className="mb-1 text-sm text-gray-600">Total Interest</p>
-          <p className="text-3xl font-bold text-purple-600">
-            {formatCompactLakh(totalInterestEarned)}
-          </p>
-          <p className="mt-2 text-xs text-gray-500">
-            {formatCurrency(totalInterestEarned)} all-time, all users
-          </p>
+          <p className="text-sm text-gray-600">Total Wallet Balance</p>
+          <p className="mt-1 text-2xl font-bold text-green-600">{formatCompactLakh(totalWalletBalance)}</p>
         </div>
 
-        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-          <div className="mb-4 flex items-center justify-between">
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-orange-100">
-              <TrendingDown className="text-orange-600" size={24} />
-            </div>
-            <Clock3 className="text-orange-500" size={20} />
+        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+          <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-lg bg-indigo-100">
+            <TrendingUp className="text-indigo-600" size={22} />
           </div>
-          <p className="mb-1 text-sm text-gray-600">Pending Withdrawals</p>
-          <p className="text-3xl font-bold text-orange-600">
-            {formatCompactLakh(pendingWithdrawals)}
-          </p>
-          <p className="mt-2 text-xs text-gray-500">
-            Total withdrawn: {formatCompactLakh(totalWithdrawals)}
-          </p>
-        </div>
-
-        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-          <div className="mb-4 flex items-center justify-between">
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-indigo-100">
-              <Target className="text-indigo-600" size={24} />
-            </div>
-            <Activity className="text-indigo-500" size={20} />
-          </div>
-          <p className="mb-1 text-sm text-gray-600">Total Invested (All Users)</p>
-          <p className="text-3xl font-bold text-indigo-600">
+          <p className="text-sm text-gray-600">Total Invested</p>
+          <p className="mt-1 text-2xl font-bold text-indigo-600">
             {formatCompactLakh(totalInvestedAmountAllUsers)}
-          </p>
-          <p className="mt-2 text-xs text-gray-500">
-            {formatCurrency(totalInvestedAmountAllUsers)} principal invested across all users
-          </p>
-        </div>
-
-        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-          <div className="mb-4 flex items-center justify-between">
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-teal-100">
-              <ShoppingBag className="text-teal-600" size={24} />
-            </div>
-            <Activity className="text-teal-500" size={20} />
-          </div>
-          <p className="mb-1 text-sm text-gray-600">Total Orders / Investments</p>
-          <p className="text-3xl font-bold text-teal-600">
-            {totalOrdersCountAllUsers}
-          </p>
-          <p className="mt-2 text-xs text-gray-500">
-            All orders/investments created by all users
           </p>
         </div>
       </div>
 
-      <div className="mb-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-col gap-4 md:flex-row">
+      {/* Search + Filters */}
+      <div className="mb-6 rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-6">
+        <div className="flex flex-col gap-3 md:flex-row">
           <form onSubmit={handleSearch} className="flex flex-1 gap-3">
             <div className="relative flex-1">
               <Search
@@ -420,7 +374,7 @@ const Users = () => {
             type="button"
           >
             <Filter size={20} />
-            Filters
+            Sort
           </button>
         </div>
 
@@ -434,7 +388,6 @@ const Users = () => {
               >
                 📅 By Date
               </button>
-
               <button
                 onClick={() => handleSort('walletBalance')}
                 className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 font-medium transition hover:bg-gray-100"
@@ -442,7 +395,6 @@ const Users = () => {
               >
                 💰 By Balance
               </button>
-
               <button
                 onClick={() => handleSort('fullName')}
                 className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 font-medium transition hover:bg-gray-100"
@@ -450,19 +402,12 @@ const Users = () => {
               >
                 👤 By Name
               </button>
-
-              <button
-                onClick={() => handleSort('isVerified')}
-                className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 font-medium transition hover:bg-gray-100"
-                type="button"
-              >
-                ✅ By Verification
-              </button>
             </div>
           </div>
         )}
       </div>
 
+      {/* Users Table */}
       {!users || users.length === 0 ? (
         <div className="rounded-xl border border-gray-200 bg-white p-12 text-center shadow-sm">
           <UsersIcon className="mx-auto mb-4 text-gray-400" size={64} />
@@ -485,132 +430,117 @@ const Users = () => {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {users.map((user) => (
-            <div
-              key={user._id}
-              className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-all hover:shadow-md"
-            >
-              <div className="bg-blue-600 p-4 text-white">
-                <div className="mb-3 flex items-center gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/20 text-lg font-bold ring-2 ring-white/30">
-                    {user.fullName?.charAt(0)?.toUpperCase() || 'U'}
-                  </div>
+        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="border-b border-gray-200 bg-gray-50">
+                <tr>
+                  <SortHeader field="fullName" label="User" />
+                  <SortHeader field="walletBalance" label="Wallet Balance" />
+                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    Invested
+                  </th>
+                  <SortHeader field="createdAt" label="Joined" />
+                  <th className="px-6 py-3.5 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {users.map((user) => (
+                  <tr key={user._id} className="transition hover:bg-gray-50">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white">
+                          {user.fullName?.charAt(0)?.toUpperCase() || 'U'}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <p className="truncate font-semibold text-gray-900">
+                              {user.fullName || 'Unknown User'}
+                            </p>
+                            {user.isVerified && (
+                              <CheckCircle2 size={14} className="shrink-0 text-emerald-500" />
+                            )}
+                          </div>
+                          <p className="flex items-center gap-1 text-xs text-gray-500">
+                            <Phone size={11} />
+                            {user.countryCode || ''} {user.phoneNumber || '-'}
+                          </p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="font-semibold text-gray-900">
+                        {formatCurrency(user.walletBalance || 0)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="font-medium text-indigo-600">
+                        {formatCurrency(user.totalInvested || 0)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="flex items-center gap-1.5 text-sm text-gray-600">
+                        <CalendarDays size={13} className="text-gray-400" />
+                        {user.createdAt
+                          ? new Date(user.createdAt).toLocaleDateString('en-IN', {
+                            dateStyle: 'medium',
+                          })
+                          : '-'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => navigate(`/dashboard/users/${user._id}`)}
+                          title="View"
+                          className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-blue-600 transition hover:bg-blue-100"
+                          type="button"
+                        >
+                          <Eye size={16} />
+                        </button>
 
-                  <div className="min-w-0 flex-1">
-                    <h3 className="truncate font-bold">{user.fullName || 'Unknown User'}</h3>
-                    <p className="flex items-center gap-1 text-sm text-blue-100">
-                      <Phone size={12} />
-                      {user.countryCode || ''} {user.phoneNumber || '-'}
-                    </p>
-                  </div>
+                        <button
+                          onClick={() => openNotificationModal(user)}
+                          title="Notify"
+                          className="flex h-9 w-9 items-center justify-center rounded-lg bg-purple-50 text-purple-600 transition hover:bg-purple-100"
+                          type="button"
+                        >
+                          <Send size={16} />
+                        </button>
 
-                  {user.isVerified && (
-                    <CheckCircle className="shrink-0 text-green-300" size={20} />
-                  )}
-                </div>
+                        <button
+                          onClick={() => openDeleteModal(user)}
+                          disabled={deletingUserId === user._id}
+                          title="Delete"
+                          className="flex h-9 w-9 items-center justify-center rounded-lg bg-red-50 text-red-600 transition hover:bg-red-100 disabled:opacity-50"
+                          type="button"
+                        >
+                          {deletingUserId === user._id ? (
+                            <Loader className="animate-spin" size={16} />
+                          ) : (
+                            <Trash2 size={16} />
+                          )}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
-                <div className="grid grid-cols-1 gap-2">
-                  <div className="rounded-lg bg-white/20 p-2 text-center">
-                    <p className="text-xs text-blue-100">Wallet Balance</p>
-                    <p className="font-bold">{formatCurrency(user.walletBalance || 0)}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-3 p-4">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-                    <div className="mb-1 flex items-center gap-2 text-gray-700">
-                      <TrendingUp size={14} />
-                      <span className="text-xs font-medium">Invested</span>
-                    </div>
-                    <p className="font-semibold text-gray-900">
-                      {formatCurrency(user.totalInvested || 0)}
-                    </p>
-                  </div>
-
-                  <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-                    <div className="mb-1 flex items-center gap-2 text-gray-700">
-                      <Wallet size={14} />
-                      <span className="text-xs font-medium">Interest Earned</span>
-                    </div>
-                    <p className="font-semibold text-emerald-600">
-                      {formatCurrency(user.totalInterestEarned || 0)}
-                    </p>
-                  </div>
-
-                  <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-                    <div className="mb-1 flex items-center gap-2 text-gray-700">
-                      <ShoppingBag size={14} />
-                      <span className="text-xs font-medium">Orders</span>
-                    </div>
-                    <p className="font-semibold text-gray-900">{user.ordersCount ?? 0}</p>
-                  </div>
-
-                  <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-                    <div className="mb-1 flex items-center gap-2 text-gray-700">
-                      <CalendarDays size={14} />
-                      <span className="text-xs font-medium">Joined</span>
-                    </div>
-                    <p className="font-semibold text-gray-900">
-                      {user.createdAt
-                        ? new Date(user.createdAt).toLocaleDateString('en-IN', {
-                          dateStyle: 'medium',
-                        })
-                        : '-'}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap gap-2 border-t border-gray-200 bg-gray-50 p-3">
-                <button
-                  onClick={() => navigate(`/dashboard/users/${user._id}`)}
-                  className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-blue-600 px-3 py-2 font-medium text-white transition hover:bg-blue-700"
-                  type="button"
-                >
-                  <Eye size={16} />
-                  View
-                </button>
-
-                <button
-                  onClick={() => openNotificationModal(user)}
-                  className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-purple-600 px-3 py-2 font-medium text-white transition hover:bg-purple-700"
-                  type="button"
-                >
-                  <Send size={16} />
-                  Notify
-                </button>
-
-                <button
-                  onClick={() => openDeleteModal(user)}
-                  disabled={deletingUserId === user._id}
-                  className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-red-600 px-3 py-2 font-medium text-white transition hover:bg-red-700 disabled:opacity-50"
-                  type="button"
-                >
-                  {deletingUserId === user._id ? (
-                    <Loader className="animate-spin" size={16} />
-                  ) : (
-                    <Trash2 size={16} />
-                  )}
-                  Delete
-                </button>
-              </div>
-            </div>
-          ))}
+          <div className="flex items-center justify-between border-t border-gray-200 bg-gray-50 px-6 py-4">
+            <p className="text-sm text-gray-600">
+              Showing <span className="font-bold text-gray-900">{users.length}</span> of{' '}
+              <span className="font-bold text-gray-900">{totalUsers}</span> users
+            </p>
+          </div>
         </div>
       )}
 
-      {users && users.length > 0 && (
-        <div className="mt-8 flex items-center justify-between rounded-xl border border-gray-200 bg-white px-6 py-4 shadow-sm">
-          <p className="text-sm text-gray-600">
-            Showing <span className="font-bold text-gray-900">{users.length}</span> of{' '}
-            <span className="font-bold text-gray-900">{totalUsers}</span> users
-          </p>
-        </div>
-      )}
-
+      {/* Notification Modal */}
       {showNotificationModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-2 sm:p-4 backdrop-blur-sm">
           <div className="flex max-h-[92vh] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
@@ -778,6 +708,7 @@ const Users = () => {
         </div>
       )}
 
+      {/* Delete Modal */}
       {showDeleteModal && userToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-2 sm:p-4 backdrop-blur-sm">
           <div className="flex w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
