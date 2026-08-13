@@ -1,14 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import {
   fetchUsers,
   fetchUserStats,
   setFilters,
+  setPage,
+  setPageSize,
   deleteUser,
   resetDeleteStatus,
   clearDeleteError,
 } from '../../store/slices/usersSlice';
-import { useNavigate } from 'react-router-dom';
 import { adminAPI } from '../../services/api';
 import {
   Search,
@@ -33,11 +35,26 @@ import {
   ChevronUp,
   ChevronDown,
   ShieldCheck,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
 } from 'lucide-react';
 import Loading from '../../components/Loader';
 
-const formatCurrency = (value) => `₹${Number(value || 0).toLocaleString('en-IN')}`;
-const formatCompactLakh = (value) => `₹${(Number(value || 0) / 100000).toFixed(1)}L`;
+const formatCurrency = (value) =>
+  `₹${Number(value || 0).toLocaleString('en-IN')}`;
+
+const formatCompactLakh = (value) =>
+  `₹${(Number(value || 0) / 100000).toFixed(1)}L`;
+
+const formatDate = (value) => {
+  if (!value) return '-';
+
+  return new Date(value).toLocaleDateString('en-IN', {
+    dateStyle: 'medium',
+  });
+};
 
 const Users = () => {
   const dispatch = useDispatch();
@@ -48,6 +65,9 @@ const Users = () => {
     listStatus,
     totalUsers = 0,
     totalWalletBalance = 0,
+    totalPages = 0,
+    currentPage = 1,
+    pageSize = 20,
     stats,
     filters = {},
     error,
@@ -56,11 +76,13 @@ const Users = () => {
   } = useSelector((state) => state.users);
 
   const verifiedUsers = Number(stats?.verifiedUsers || 0);
-  const totalInterestEarned = Number(stats?.totalInterestEarned || 0);
-  const totalInvestedAmountAllUsers = Number(stats?.totalInvestedAmount || 0);
+  const totalInvested = Number(
+    stats?.totalInvested ?? stats?.totalInvestedAmount ?? 0
+  );
 
   const [searchTerm, setSearchTerm] = useState(filters.search || '');
   const [showFilters, setShowFilters] = useState(false);
+
   const [showNotificationModal, setShowNotificationModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [sendToAll, setSendToAll] = useState(false);
@@ -79,51 +101,166 @@ const Users = () => {
   useEffect(() => {
     dispatch(
       fetchUsers({
-        page: 1,
-        limit: 20,
+        page: currentPage,
+        limit: pageSize,
         search: filters.search || '',
         sortBy: filters.sortBy || 'createdAt',
         sortOrder: filters.sortOrder || 'desc',
       })
     );
-  }, [dispatch, filters.search, filters.sortBy, filters.sortOrder]);
+  }, [
+    dispatch,
+    currentPage,
+    pageSize,
+    filters.search,
+    filters.sortBy,
+    filters.sortOrder,
+  ]);
 
   useEffect(() => {
     dispatch(fetchUserStats());
   }, [dispatch]);
 
-  const handleSearch = (e) => {
-    e.preventDefault();
-    dispatch(setFilters({ search: searchTerm, sortBy: filters.sortBy, sortOrder: filters.sortOrder }));
+  const pageNumbers = useMemo(() => {
+    const maxVisiblePages = 5;
+    const pages = [];
+
+    let start = Math.max(
+      1,
+      currentPage - Math.floor(maxVisiblePages / 2)
+    );
+
+    let end = Math.min(
+      totalPages,
+      start + maxVisiblePages - 1
+    );
+
+    if (end - start + 1 < maxVisiblePages) {
+      start = Math.max(1, end - maxVisiblePages + 1);
+    }
+
+    for (let page = start; page <= end; page += 1) {
+      pages.push(page);
+    }
+
+    return pages;
+  }, [currentPage, totalPages]);
+
+  const handleSearch = (event) => {
+    event.preventDefault();
+
+    dispatch(
+      setFilters({
+        search: searchTerm.trim(),
+        sortBy: filters.sortBy || 'createdAt',
+        sortOrder: filters.sortOrder || 'desc',
+      })
+    );
+  };
+
+  const clearSearch = () => {
+    setSearchTerm('');
+    dispatch(
+      setFilters({
+        search: '',
+        sortBy: filters.sortBy || 'createdAt',
+        sortOrder: filters.sortOrder || 'desc',
+      })
+    );
   };
 
   const handleSort = (field) => {
     const newOrder =
-      filters.sortBy === field && filters.sortOrder === 'desc' ? 'asc' : 'desc';
-    dispatch(setFilters({ sortBy: field, sortOrder: newOrder, search: filters.search || '' }));
+      filters.sortBy === field && filters.sortOrder === 'desc'
+        ? 'asc'
+        : 'desc';
+
+    dispatch(
+      setFilters({
+        search: filters.search || '',
+        sortBy: field,
+        sortOrder: newOrder,
+      })
+    );
+  };
+
+  const handlePageChange = (page) => {
+    if (
+      page < 1 ||
+      page > totalPages ||
+      page === currentPage
+    ) {
+      return;
+    }
+
+    dispatch(setPage(page));
+  };
+
+  const handlePageSizeChange = (event) => {
+    dispatch(setPageSize(Number(event.target.value)));
   };
 
   const handleRefresh = () => {
     dispatch(
       fetchUsers({
-        page: 1,
-        limit: 20,
+        page: currentPage,
+        limit: pageSize,
         search: filters.search || '',
         sortBy: filters.sortBy || 'createdAt',
         sortOrder: filters.sortOrder || 'desc',
       })
     );
+
     dispatch(fetchUserStats());
   };
 
-  const openNotificationModal = (user = null) => {
-    if (user) {
-      setSelectedUser(user);
-      setSendToAll(false);
-    } else {
-      setSelectedUser(null);
-      setSendToAll(true);
+  const exportToCSV = () => {
+    if (!users.length) {
+      alert('There are no users to export on this page.');
+      return;
     }
+
+    const headers = [
+      'Name',
+      'Phone',
+      'Wallet Balance',
+      'Invested',
+      'Joined',
+      'Verified',
+    ];
+
+    const rows = users.map((user) => [
+      user.fullName || '',
+      `${user.countryCode || ''} ${user.phoneNumber || ''}`.trim(),
+      user.walletBalance || 0,
+      user.totalInvested || 0,
+      user.createdAt || '',
+      user.isVerified ? 'Yes' : 'No',
+    ]);
+
+    const csv = [headers, ...rows]
+      .map((row) =>
+        row
+          .map((value) => `"${String(value).replace(/"/g, '""')}"`)
+          .join(',')
+      )
+      .join('\n');
+
+    const blob = new Blob([csv], {
+      type: 'text/csv;charset=utf-8;',
+    });
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `users-page-${currentPage}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const openNotificationModal = (user = null) => {
+    setSelectedUser(user);
+    setSendToAll(!user);
     setShowNotificationModal(true);
   };
 
@@ -131,14 +268,21 @@ const Users = () => {
     setShowNotificationModal(false);
     setSelectedUser(null);
     setSendToAll(false);
-    setNotificationData({ title: '', message: '', type: 'general' });
+    setNotificationData({
+      title: '',
+      message: '',
+      type: 'general',
+    });
   };
 
-  const handleSubmitNotification = async (e) => {
-    e.preventDefault();
+  const handleSubmitNotification = async (event) => {
+    event.preventDefault();
 
-    if (!notificationData.title.trim() || !notificationData.message.trim()) {
-      alert('Please fill in all fields');
+    if (
+      !notificationData.title.trim() ||
+      !notificationData.message.trim()
+    ) {
+      alert('Please fill in all notification fields.');
       return;
     }
 
@@ -147,38 +291,24 @@ const Users = () => {
 
       if (sendToAll) {
         await adminAPI.sendNotificationToAll(notificationData);
-        alert(`✅ Notification sent to all ${totalUsers} users!`);
+        alert(`Notification sent to all ${totalUsers} users.`);
       } else if (selectedUser?._id) {
-        await adminAPI.sendNotificationToUser(selectedUser._id, notificationData);
-        alert(`✅ Notification sent to ${selectedUser.fullName}!`);
+        await adminAPI.sendNotificationToUser(
+          selectedUser._id,
+          notificationData
+        );
+        alert(`Notification sent to ${selectedUser.fullName}.`);
       }
 
       resetNotificationModal();
-    } catch (error) {
-      console.error('Error sending notification:', error);
-      alert(error.response?.data?.message || 'Failed to send notification');
+    } catch (requestError) {
+      alert(
+        requestError.response?.data?.message ||
+        'Failed to send notification.'
+      );
     } finally {
       setSendingNotification(false);
     }
-  };
-
-  const getTypeIcon = (type) => {
-    switch (type) {
-      case 'payment':
-        return '💰';
-      case 'withdrawal':
-        return '💸';
-      case 'promotion':
-        return '🎁';
-      case 'order':
-        return '📦';
-      default:
-        return '📢';
-    }
-  };
-
-  const exportToCSV = () => {
-    alert('Export functionality coming soon!');
   };
 
   const openDeleteModal = (user) => {
@@ -199,63 +329,76 @@ const Users = () => {
   const handleConfirmDelete = async () => {
     if (!userToDelete?._id) return;
 
-    const expected = (userToDelete.fullName || '').trim().toLowerCase();
-    if (confirmText.trim().toLowerCase() !== expected) {
-      alert('Name does not match. Please type the exact full name to confirm.');
+    const expectedName = (userToDelete.fullName || '')
+      .trim()
+      .toLowerCase();
+
+    if (confirmText.trim().toLowerCase() !== expectedName) {
       return;
     }
 
     try {
       setDeletingUserId(userToDelete._id);
       await dispatch(deleteUser(userToDelete._id)).unwrap();
-      alert(`✅ ${userToDelete.fullName} and all related data deleted successfully.`);
+
       closeDeleteModal();
       dispatch(fetchUserStats());
-    } catch (err) {
-      alert(err || 'Failed to delete user');
+
+      // If the deleted user was the only user on the last page,
+      // load the previous page.
+      if (users.length === 1 && currentPage > 1) {
+        dispatch(setPage(currentPage - 1));
+      }
+    } catch {
+      // deleteError is displayed inside the modal from Redux state.
     } finally {
       setDeletingUserId(null);
     }
   };
 
-  const SortHeader = ({ field, label, className = '' }) => {
-    const isActive = filters.sortBy === field;
+  const SortHeader = ({ field, label }) => {
+    const active = filters.sortBy === field;
+
     return (
       <th
         onClick={() => handleSort(field)}
-        className={`cursor-pointer select-none px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 transition hover:text-gray-800 ${className}`}
+        className="cursor-pointer select-none px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 hover:text-gray-800"
       >
         <div className="flex items-center gap-1.5">
           {label}
-          {isActive ? (
+          {active ? (
             filters.sortOrder === 'asc' ? (
-              <ChevronUp size={13} className="text-blue-600" />
+              <ChevronUp size={14} className="text-blue-600" />
             ) : (
-              <ChevronDown size={13} className="text-blue-600" />
+              <ChevronDown size={14} className="text-blue-600" />
             )
           ) : (
-            <ArrowUpDown size={12} className="text-gray-300" />
+            <ArrowUpDown size={13} className="text-gray-300" />
           )}
         </div>
       </th>
     );
   };
 
-  if (listStatus === 'loading') {
+  if (listStatus === 'loading' && users.length === 0) {
     return <Loading message="Loading all users..." />;
   }
 
-  if (listStatus === 'failed') {
+  if (listStatus === 'failed' && users.length === 0) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center px-4">
-        <div className="mb-6 rounded-full bg-red-50 p-6">
-          <AlertCircle className="text-red-500" size={48} />
+        <div className="mb-5 rounded-full bg-red-50 p-5">
+          <AlertCircle className="text-red-500" size={46} />
         </div>
-        <h2 className="mb-2 text-2xl font-bold text-gray-800">Failed to Load Users</h2>
-        <p className="mb-6 max-w-md text-center text-gray-600">{error}</p>
+        <h2 className="mb-2 text-2xl font-bold text-gray-800">
+          Failed to Load Users
+        </h2>
+        <p className="mb-5 max-w-md text-center text-gray-600">
+          {error || 'Unable to load users.'}
+        </p>
         <button
           onClick={handleRefresh}
-          className="flex items-center gap-2 rounded-lg bg-blue-500 px-6 py-2.5 text-white transition hover:bg-blue-600"
+          className="flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 font-semibold text-white hover:bg-blue-700"
           type="button"
         >
           <RefreshCw size={18} />
@@ -266,18 +409,21 @@ const Users = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-3 sm:p-4 lg:p-6">
-      {/* Header */}
-      <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+    <div className="min-h-screen bg-gray-50 p-3 sm:p-5 lg:p-7">
+      <div className="mb-6 flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">Users Management</h1>
-          <p className="mt-1 text-sm text-gray-600 sm:text-base">{totalUsers} registered users</p>
+          <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">
+            Users Management
+          </h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Manage active users, balances and account actions
+          </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap gap-3">
           <button
-            onClick={() => openNotificationModal(null)}
-            className="flex items-center gap-2 rounded-xl bg-purple-600 px-4 py-2.5 font-semibold text-white shadow-sm transition hover:bg-purple-700"
+            onClick={() => openNotificationModal()}
+            className="flex items-center gap-2 rounded-xl bg-purple-600 px-4 py-2.5 font-semibold text-white hover:bg-purple-700"
             type="button"
           >
             <Bell size={18} />
@@ -287,242 +433,250 @@ const Users = () => {
           <button
             onClick={handleRefresh}
             disabled={listStatus === 'loading'}
-            className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 font-semibold text-gray-700 transition hover:bg-gray-50 disabled:opacity-50"
+            className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
             type="button"
           >
-            <RefreshCw size={18} className={listStatus === 'loading' ? 'animate-spin' : ''} />
+            <RefreshCw
+              size={18}
+              className={listStatus === 'loading' ? 'animate-spin' : ''}
+            />
             Refresh
           </button>
 
           <button
             onClick={exportToCSV}
-            className="flex items-center gap-2 rounded-xl bg-green-600 px-4 py-2.5 font-semibold text-white shadow-sm transition hover:bg-green-700"
+            className="flex items-center gap-2 rounded-xl bg-green-600 px-4 py-2.5 font-semibold text-white hover:bg-green-700"
             type="button"
           >
             <Download size={18} />
-            Export
+            Export Page
           </button>
         </div>
       </div>
 
-      {/* Stat cards - clean, non-redundant */}
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-          <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-lg bg-blue-100">
-            <UsersIcon className="text-blue-600" size={22} />
-          </div>
-          <p className="text-sm text-gray-600">Total Users</p>
-          <p className="mt-1 text-2xl font-bold text-gray-900">{totalUsers}</p>
-        </div>
-
-        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-          <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-lg bg-emerald-100">
-            <ShieldCheck className="text-emerald-600" size={22} />
-          </div>
-          <p className="text-sm text-gray-600">Verified Users</p>
-          <p className="mt-1 text-2xl font-bold text-emerald-600">{verifiedUsers}</p>
-        </div>
-
-        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-          <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-lg bg-green-100">
-            <Wallet className="text-green-600" size={22} />
-          </div>
-          <p className="text-sm text-gray-600">Total Wallet Balance</p>
-          <p className="mt-1 text-2xl font-bold text-green-600">{formatCompactLakh(totalWalletBalance)}</p>
-        </div>
-
-        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-          <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-lg bg-indigo-100">
-            <TrendingUp className="text-indigo-600" size={22} />
-          </div>
-          <p className="text-sm text-gray-600">Total Invested</p>
-          <p className="mt-1 text-2xl font-bold text-indigo-600">
-            {formatCompactLakh(totalInvestedAmountAllUsers)}
-          </p>
-        </div>
+        <StatCard
+          icon={<UsersIcon size={22} />}
+          label="Total Users"
+          value={totalUsers}
+          color="blue"
+        />
+        <StatCard
+          icon={<ShieldCheck size={22} />}
+          label="Verified Users"
+          value={verifiedUsers}
+          color="emerald"
+        />
+        <StatCard
+          icon={<Wallet size={22} />}
+          label="Total Wallet Balance"
+          value={formatCompactLakh(totalWalletBalance)}
+          color="green"
+        />
+        <StatCard
+          icon={<TrendingUp size={22} />}
+          label="Total Invested"
+          value={formatCompactLakh(totalInvested)}
+          color="indigo"
+        />
       </div>
 
-      {/* Search + Filters */}
-      <div className="mb-6 rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-6">
+      <div className="mb-6 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5">
         <div className="flex flex-col gap-3 md:flex-row">
           <form onSubmit={handleSearch} className="flex flex-1 gap-3">
             <div className="relative flex-1">
               <Search
-                className="absolute left-4 top-1/2 -translate-y-1/2 transform text-gray-400"
-                size={20}
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
+                size={19}
               />
               <input
-                type="text"
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(event) => setSearchTerm(event.target.value)}
                 placeholder="Search by name or phone..."
-                className="w-full rounded-xl border border-gray-200 py-3 pl-12 pr-4 transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                className="w-full rounded-xl border border-gray-200 py-3 pl-12 pr-4 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
               />
             </div>
 
             <button
+              className="rounded-xl bg-blue-600 px-6 font-semibold text-white hover:bg-blue-700"
               type="submit"
-              className="whitespace-nowrap rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white transition hover:bg-blue-700"
             >
               Search
             </button>
           </form>
 
           <button
-            onClick={() => setShowFilters(!showFilters)}
-            className="flex items-center justify-center gap-2 rounded-xl bg-gray-100 px-6 py-3 font-semibold text-gray-700 transition hover:bg-gray-200"
+            onClick={() => setShowFilters((value) => !value)}
+            className="flex items-center justify-center gap-2 rounded-xl bg-gray-100 px-5 py-3 font-semibold text-gray-700 hover:bg-gray-200"
             type="button"
           >
-            <Filter size={20} />
+            <Filter size={18} />
             Sort
           </button>
         </div>
 
         {showFilters && (
-          <div className="mt-6 border-t border-gray-200 pt-6">
-            <div className="flex flex-wrap gap-3">
+          <div className="mt-4 flex flex-wrap gap-2 border-t border-gray-200 pt-4">
+            <SortButton
+              label="Date"
+              onClick={() => handleSort('createdAt')}
+            />
+            <SortButton
+              label="Name"
+              onClick={() => handleSort('fullName')}
+            />
+            <SortButton
+              label="Balance"
+              onClick={() => handleSort('walletBalance')}
+            />
+
+            {filters.search && (
               <button
-                onClick={() => handleSort('createdAt')}
-                className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 font-medium transition hover:bg-gray-100"
+                onClick={clearSearch}
+                className="flex items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-600"
                 type="button"
               >
-                📅 By Date
+                <X size={14} />
+                Clear Search
               </button>
-              <button
-                onClick={() => handleSort('walletBalance')}
-                className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 font-medium transition hover:bg-gray-100"
-                type="button"
-              >
-                💰 By Balance
-              </button>
-              <button
-                onClick={() => handleSort('fullName')}
-                className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 font-medium transition hover:bg-gray-100"
-                type="button"
-              >
-                👤 By Name
-              </button>
-            </div>
+            )}
           </div>
         )}
       </div>
 
-      {/* Users Table */}
-      {!users || users.length === 0 ? (
-        <div className="rounded-xl border border-gray-200 bg-white p-12 text-center shadow-sm">
-          <UsersIcon className="mx-auto mb-4 text-gray-400" size={64} />
-          <h3 className="mb-2 text-2xl font-bold text-gray-800">No Users Found</h3>
-          <p className="mb-6 text-gray-500">
-            {searchTerm ? 'Try adjusting your search criteria' : 'No users have signed up yet'}
-          </p>
+      <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+        <div className="flex flex-col justify-between gap-3 border-b border-gray-200 px-5 py-4 sm:flex-row sm:items-center">
+          <div>
+            <h2 className="font-bold text-gray-900">All Active Users</h2>
+            <p className="text-sm text-gray-500">
+              {totalUsers.toLocaleString('en-IN')} active users found
+            </p>
+          </div>
 
-          {searchTerm && (
-            <button
-              onClick={() => {
-                setSearchTerm('');
-                dispatch(setFilters({ search: '', sortBy: filters.sortBy, sortOrder: filters.sortOrder }));
-              }}
-              className="rounded-xl bg-blue-500 px-6 py-3 font-semibold text-white transition hover:bg-blue-600"
-              type="button"
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <span>Rows per page</span>
+            <select
+              value={pageSize}
+              onChange={handlePageSizeChange}
+              className="rounded-lg border border-gray-300 bg-white px-2 py-1.5 outline-none focus:border-blue-500"
             >
-              Clear Search
-            </button>
-          )}
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+          </div>
         </div>
-      ) : (
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+
+        {users.length === 0 ? (
+          <div className="p-12 text-center">
+            <UsersIcon className="mx-auto mb-4 text-gray-300" size={58} />
+            <h3 className="mb-2 text-xl font-bold text-gray-800">
+              No Users Found
+            </h3>
+            <p className="text-gray-500">
+              {filters.search
+                ? 'Try adjusting your search criteria.'
+                : 'No active users are available.'}
+            </p>
+          </div>
+        ) : (
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full min-w-[850px]">
               <thead className="border-b border-gray-200 bg-gray-50">
                 <tr>
                   <SortHeader field="fullName" label="User" />
-                  <SortHeader field="walletBalance" label="Wallet Balance" />
-                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  <SortHeader
+                    field="walletBalance"
+                    label="Wallet Balance"
+                  />
+                  <th className="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
                     Invested
                   </th>
                   <SortHeader field="createdAt" label="Joined" />
-                  <th className="px-6 py-3.5 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  <th className="px-5 py-3.5 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">
                     Actions
                   </th>
                 </tr>
               </thead>
+
               <tbody className="divide-y divide-gray-100">
                 {users.map((user) => (
                   <tr key={user._id} className="transition hover:bg-gray-50">
-                    <td className="px-6 py-4">
+                    <td className="px-5 py-4">
                       <div className="flex items-center gap-3">
                         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white">
                           {user.fullName?.charAt(0)?.toUpperCase() || 'U'}
                         </div>
+
                         <div className="min-w-0">
                           <div className="flex items-center gap-1.5">
                             <p className="truncate font-semibold text-gray-900">
                               {user.fullName || 'Unknown User'}
                             </p>
                             {user.isVerified && (
-                              <CheckCircle2 size={14} className="shrink-0 text-emerald-500" />
+                              <CheckCircle2
+                                size={14}
+                                className="shrink-0 text-emerald-500"
+                              />
                             )}
                           </div>
                           <p className="flex items-center gap-1 text-xs text-gray-500">
                             <Phone size={11} />
-                            {user.countryCode || ''} {user.phoneNumber || '-'}
+                            {user.countryCode || ''}{' '}
+                            {user.phoneNumber || '-'}
                           </p>
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <span className="font-semibold text-gray-900">
-                        {formatCurrency(user.walletBalance || 0)}
+
+                    <td className="px-5 py-4 font-semibold text-gray-900">
+                      {formatCurrency(user.walletBalance)}
+                    </td>
+
+                    <td className="px-5 py-4 font-semibold text-indigo-600">
+                      {formatCurrency(user.totalInvested)}
+                    </td>
+
+                    <td className="px-5 py-4 text-sm text-gray-600">
+                      <span className="flex items-center gap-1.5">
+                        <CalendarDays size={14} className="text-gray-400" />
+                        {formatDate(user.createdAt)}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
-                      <span className="font-medium text-indigo-600">
-                        {formatCurrency(user.totalInvested || 0)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="flex items-center gap-1.5 text-sm text-gray-600">
-                        <CalendarDays size={13} className="text-gray-400" />
-                        {user.createdAt
-                          ? new Date(user.createdAt).toLocaleDateString('en-IN', {
-                            dateStyle: 'medium',
-                          })
-                          : '-'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
+
+                    <td className="px-5 py-4">
                       <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => navigate(`/dashboard/users/${user._id}`)}
-                          title="View"
-                          className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-blue-600 transition hover:bg-blue-100"
-                          type="button"
+                        <ActionButton
+                          title="View user"
+                          color="blue"
+                          onClick={() =>
+                            navigate(`/dashboard/users/${user._id}`)
+                          }
                         >
                           <Eye size={16} />
-                        </button>
+                        </ActionButton>
 
-                        <button
+                        <ActionButton
+                          title="Send notification"
+                          color="purple"
                           onClick={() => openNotificationModal(user)}
-                          title="Notify"
-                          className="flex h-9 w-9 items-center justify-center rounded-lg bg-purple-50 text-purple-600 transition hover:bg-purple-100"
-                          type="button"
                         >
                           <Send size={16} />
-                        </button>
+                        </ActionButton>
 
-                        <button
-                          onClick={() => openDeleteModal(user)}
+                        <ActionButton
+                          title="Delete user"
+                          color="red"
                           disabled={deletingUserId === user._id}
-                          title="Delete"
-                          className="flex h-9 w-9 items-center justify-center rounded-lg bg-red-50 text-red-600 transition hover:bg-red-100 disabled:opacity-50"
-                          type="button"
+                          onClick={() => openDeleteModal(user)}
                         >
                           {deletingUserId === user._id ? (
                             <Loader className="animate-spin" size={16} />
                           ) : (
                             <Trash2 size={16} />
                           )}
-                        </button>
+                        </ActionButton>
                       </div>
                     </td>
                   </tr>
@@ -530,291 +684,339 @@ const Users = () => {
               </tbody>
             </table>
           </div>
+        )}
 
-          <div className="flex items-center justify-between border-t border-gray-200 bg-gray-50 px-6 py-4">
-            <p className="text-sm text-gray-600">
-              Showing <span className="font-bold text-gray-900">{users.length}</span> of{' '}
-              <span className="font-bold text-gray-900">{totalUsers}</span> users
-            </p>
+        <div className="flex flex-col items-center justify-between gap-4 border-t border-gray-200 bg-gray-50 px-5 py-4 sm:flex-row">
+          <p className="text-sm text-gray-600">
+            Showing{' '}
+            <span className="font-bold text-gray-900">
+              {users.length}
+            </span>{' '}
+            users on page{' '}
+            <span className="font-bold text-gray-900">
+              {currentPage}
+            </span>{' '}
+            of{' '}
+            <span className="font-bold text-gray-900">
+              {totalPages || 1}
+            </span>{' '}
+            — {totalUsers.toLocaleString('en-IN')} total users
+          </p>
+
+          <div className="flex items-center gap-1.5">
+            <PageButton
+              disabled={currentPage === 1}
+              onClick={() => handlePageChange(1)}
+              label="First page"
+            >
+              <ChevronsLeft size={16} />
+            </PageButton>
+
+            <PageButton
+              disabled={currentPage === 1}
+              onClick={() => handlePageChange(currentPage - 1)}
+              label="Previous page"
+            >
+              <ChevronLeft size={16} />
+            </PageButton>
+
+            {pageNumbers[0] > 1 && (
+              <span className="px-1 text-gray-400">...</span>
+            )}
+
+            {pageNumbers.map((page) => (
+              <button
+                key={page}
+                onClick={() => handlePageChange(page)}
+                className={`h-9 w-9 rounded-lg text-sm font-semibold transition ${page === currentPage
+                  ? 'bg-blue-600 text-white'
+                  : 'border border-gray-200 bg-white text-gray-700 hover:bg-gray-100'
+                  }`}
+                type="button"
+              >
+                {page}
+              </button>
+            ))}
+
+            {pageNumbers[pageNumbers.length - 1] < totalPages && (
+              <span className="px-1 text-gray-400">...</span>
+            )}
+
+            <PageButton
+              disabled={currentPage >= totalPages || totalPages === 0}
+              onClick={() => handlePageChange(currentPage + 1)}
+              label="Next page"
+            >
+              <ChevronRight size={16} />
+            </PageButton>
+
+            <PageButton
+              disabled={currentPage >= totalPages || totalPages === 0}
+              onClick={() => handlePageChange(totalPages)}
+              label="Last page"
+            >
+              <ChevronsRight size={16} />
+            </PageButton>
           </div>
         </div>
-      )}
+      </div>
 
-      {/* Notification Modal */}
       {showNotificationModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-2 sm:p-4 backdrop-blur-sm">
-          <div className="flex max-h-[92vh] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-gray-200 px-4 py-4 sm:px-6">
-              <div className="min-w-0">
-                <h3 className="flex items-center gap-2 text-lg font-bold text-gray-900 sm:text-xl">
-                  {sendToAll ? (
-                    <Bell className="text-purple-600" size={22} />
-                  ) : (
-                    <Send className="text-purple-600" size={22} />
-                  )}
-                  <span className="truncate">{sendToAll ? 'Broadcast to All' : 'Send Notification'}</span>
-                </h3>
-                <p className="mt-1 truncate text-sm text-gray-600">
-                  {sendToAll ? `To: All ${totalUsers} users` : `To: ${selectedUser?.fullName}`}
-                </p>
-              </div>
+        <Modal
+          title={sendToAll ? 'Broadcast to All Users' : 'Send Notification'}
+          onClose={resetNotificationModal}
+        >
+          <form onSubmit={handleSubmitNotification} className="space-y-4">
+            <div className="rounded-xl border border-purple-200 bg-purple-50 p-3 text-sm text-purple-800">
+              {sendToAll
+                ? `This notification will be sent to all ${totalUsers} active users.`
+                : `Recipient: ${selectedUser?.fullName || '-'}`}
+            </div>
 
+            <select
+              value={notificationData.type}
+              onChange={(event) =>
+                setNotificationData((previous) => ({
+                  ...previous,
+                  type: event.target.value,
+                }))
+              }
+              className="w-full rounded-xl border border-gray-200 px-4 py-3"
+            >
+              <option value="general">General</option>
+              <option value="payment">Payment</option>
+              <option value="withdrawal">Withdrawal</option>
+              <option value="order">Order Update</option>
+              <option value="promotion">Promotion</option>
+            </select>
+
+            <input
+              required
+              maxLength={50}
+              value={notificationData.title}
+              onChange={(event) =>
+                setNotificationData((previous) => ({
+                  ...previous,
+                  title: event.target.value,
+                }))
+              }
+              placeholder="Notification title"
+              className="w-full rounded-xl border border-gray-200 px-4 py-3"
+            />
+
+            <textarea
+              required
+              maxLength={200}
+              rows={5}
+              value={notificationData.message}
+              onChange={(event) =>
+                setNotificationData((previous) => ({
+                  ...previous,
+                  message: event.target.value,
+                }))
+              }
+              placeholder="Notification message"
+              className="w-full resize-none rounded-xl border border-gray-200 px-4 py-3"
+            />
+
+            <div className="flex gap-3">
               <button
-                onClick={resetNotificationModal}
-                className="rounded-lg p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
                 type="button"
-                aria-label="Close modal"
+                onClick={resetNotificationModal}
+                className="flex-1 rounded-xl bg-gray-200 py-3 font-semibold text-gray-800"
               >
-                <X size={22} />
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={sendingNotification}
+                className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-purple-600 py-3 font-semibold text-white disabled:opacity-50"
+              >
+                {sendingNotification && (
+                  <Loader className="animate-spin" size={17} />
+                )}
+                {sendingNotification ? 'Sending...' : 'Send Notification'}
               </button>
             </div>
-
-            <form onSubmit={handleSubmitNotification} className="flex-1 overflow-y-auto px-4 py-4 sm:px-6">
-              <div className="space-y-4">
-                {!sendToAll && selectedUser && (
-                  <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-purple-600 text-lg font-bold text-white">
-                        {selectedUser.fullName?.charAt(0).toUpperCase()}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="truncate font-bold text-gray-900">{selectedUser.fullName}</p>
-                        <p className="truncate text-sm text-gray-600">{selectedUser.phoneNumber}</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {sendToAll && (
-                  <div className="flex items-start gap-3 rounded-xl border border-yellow-200 bg-yellow-50 p-4">
-                    <AlertCircle className="mt-0.5 shrink-0 text-yellow-600" size={20} />
-                    <div>
-                      <p className="font-bold text-yellow-900">Broadcasting to {totalUsers} users</p>
-                      <p className="mt-1 text-sm text-yellow-700">
-                        This will send a notification to all registered users
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-gray-700">Type</label>
-                  <select
-                    value={notificationData.type}
-                    onChange={(e) =>
-                      setNotificationData((prev) => ({ ...prev, type: e.target.value }))
-                    }
-                    className="w-full rounded-xl border border-gray-200 px-4 py-3 transition focus:border-purple-500 focus:ring-2 focus:ring-purple-100"
-                  >
-                    <option value="general">📢 General</option>
-                    <option value="payment">💰 Payment</option>
-                    <option value="withdrawal">💸 Withdrawal</option>
-                    <option value="order">📦 Order Update</option>
-                    <option value="promotion">🎁 Promotion</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-gray-700">Title</label>
-                  <input
-                    type="text"
-                    value={notificationData.title}
-                    onChange={(e) =>
-                      setNotificationData((prev) => ({ ...prev, title: e.target.value }))
-                    }
-                    className="w-full rounded-xl border border-gray-200 px-4 py-3 transition focus:border-purple-500 focus:ring-2 focus:ring-purple-100"
-                    placeholder="Enter notification title"
-                    maxLength={50}
-                    required
-                  />
-                  <p className="mt-1 text-xs text-gray-500">{notificationData.title.length}/50</p>
-                </div>
-
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-gray-700">Message</label>
-                  <textarea
-                    value={notificationData.message}
-                    onChange={(e) =>
-                      setNotificationData((prev) => ({ ...prev, message: e.target.value }))
-                    }
-                    className="min-h-[120px] w-full resize-y rounded-xl border border-gray-200 px-4 py-3 transition focus:border-purple-500 focus:ring-2 focus:ring-purple-100 sm:min-h-[140px]"
-                    rows="5"
-                    placeholder="Enter notification message"
-                    maxLength={200}
-                    required
-                  />
-                  <p className="mt-1 text-xs text-gray-500">{notificationData.message.length}/200</p>
-                </div>
-
-                {(notificationData.title || notificationData.message) && (
-                  <div className="rounded-xl border border-purple-200 bg-purple-50 p-4">
-                    <p className="mb-3 text-sm font-medium text-purple-700">Preview:</p>
-                    <div className="rounded-lg bg-white p-4 shadow-sm">
-                      <div className="flex items-start gap-3">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-purple-100">
-                          <Bell className="text-purple-600" size={18} />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="mb-1 flex items-center gap-2">
-                            <h4 className="truncate font-semibold text-gray-900">
-                              {notificationData.title || 'Title'}
-                            </h4>
-                            <span className="text-lg">{getTypeIcon(notificationData.type)}</span>
-                          </div>
-                          <p className="break-words text-sm text-gray-600">
-                            {notificationData.message || 'Message'}
-                          </p>
-                          <p className="mt-1 text-xs text-gray-400">Just now</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </form>
-
-            <div className="border-t border-gray-200 bg-white px-4 py-4 sm:px-6">
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={resetNotificationModal}
-                  className="flex-1 rounded-xl bg-gray-200 py-3 font-semibold text-gray-800 transition hover:bg-gray-300"
-                >
-                  Cancel
-                </button>
-
-                <button
-                  type="submit"
-                  form=""
-                  disabled={sendingNotification}
-                  onClick={handleSubmitNotification}
-                  className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-purple-600 py-3 font-semibold text-white transition hover:bg-purple-700 disabled:opacity-50"
-                >
-                  {sendingNotification ? (
-                    <>
-                      <Loader className="animate-spin" size={18} />
-                      Sending...
-                    </>
-                  ) : (
-                    <>
-                      {sendToAll ? <Bell size={18} /> : <Send size={18} />}
-                      {sendToAll ? 'Broadcast' : 'Send'}
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+          </form>
+        </Modal>
       )}
 
-      {/* Delete Modal */}
       {showDeleteModal && userToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-2 sm:p-4 backdrop-blur-sm">
-          <div className="flex w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-gray-200 px-4 py-4 sm:px-6">
-              <div className="flex items-center gap-2">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
-                  <ShieldAlert className="text-red-600" size={22} />
-                </div>
-                <h3 className="text-lg font-bold text-gray-900 sm:text-xl">Delete User</h3>
-              </div>
+        <Modal title="Delete User Permanently" onClose={closeDeleteModal}>
+          <div className="space-y-4">
+            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+              <p className="font-bold text-gray-900">
+                {userToDelete.fullName}
+              </p>
+              <p className="text-sm text-gray-500">
+                {userToDelete.phoneNumber}
+              </p>
+              <p className="mt-1 text-sm font-semibold text-gray-700">
+                Wallet: {formatCurrency(userToDelete.walletBalance)}
+              </p>
+            </div>
 
+            <div className="flex gap-2 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+              <ShieldAlert size={18} className="shrink-0" />
+              <span>
+                This permanently deletes the profile, bank accounts,
+                deposits, withdrawals, transactions and investments.
+              </span>
+            </div>
+
+            <label className="block text-sm font-medium text-gray-700">
+              Type{' '}
+              <span className="font-bold text-gray-900">
+                {userToDelete.fullName}
+              </span>{' '}
+              to confirm.
+              <input
+                autoFocus
+                value={confirmText}
+                onChange={(event) => setConfirmText(event.target.value)}
+                placeholder="Enter full name exactly"
+                className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3"
+              />
+            </label>
+
+            {deleteError && (
+              <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                {deleteError}
+              </div>
+            )}
+
+            <div className="flex gap-3">
               <button
-                onClick={closeDeleteModal}
-                className="rounded-lg p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
                 type="button"
-                aria-label="Close modal"
+                onClick={closeDeleteModal}
+                className="flex-1 rounded-xl bg-gray-200 py-3 font-semibold text-gray-800"
               >
-                <X size={22} />
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                disabled={
+                  deleteStatus === 'loading' ||
+                  confirmText.trim().toLowerCase() !==
+                  userToDelete.fullName.trim().toLowerCase()
+                }
+                className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-red-600 py-3 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {deleteStatus === 'loading' ? (
+                  <Loader className="animate-spin" size={18} />
+                ) : (
+                  <>
+                    <Trash2 size={17} />
+                    Delete Permanently
+                  </>
+                )}
               </button>
             </div>
-
-            <div className="space-y-4 px-4 py-4 sm:px-6">
-              <div className="flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 p-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-600 text-lg font-bold text-white">
-                  {userToDelete.fullName?.charAt(0)?.toUpperCase() || 'U'}
-                </div>
-                <div className="min-w-0">
-                  <p className="truncate font-bold text-gray-900">{userToDelete.fullName}</p>
-                  <p className="truncate text-sm text-gray-600">{userToDelete.phoneNumber}</p>
-                  <p className="text-sm font-medium text-gray-700">
-                    Wallet: {formatCurrency(userToDelete.walletBalance || 0)}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4">
-                <AlertCircle className="mt-0.5 shrink-0 text-red-600" size={20} />
-                <div>
-                  <p className="font-bold text-red-900">This action is permanent</p>
-                  <p className="mt-1 text-sm text-red-700">
-                    Deleting this user will permanently remove their profile, bank accounts,
-                    all deposits, withdrawals, transactions, and investment/order history.
-                    This cannot be undone.
-                  </p>
-                </div>
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">
-                  Type <span className="font-bold text-gray-900">{userToDelete.fullName}</span> to confirm
-                </label>
-                <input
-                  type="text"
-                  value={confirmText}
-                  onChange={(e) => setConfirmText(e.target.value)}
-                  className="w-full rounded-xl border border-gray-200 px-4 py-3 transition focus:border-red-500 focus:ring-2 focus:ring-red-100"
-                  placeholder="Enter full name exactly"
-                  autoFocus
-                />
-              </div>
-
-              {deleteError && (
-                <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-                  {deleteError}
-                </div>
-              )}
-            </div>
-
-            <div className="border-t border-gray-200 bg-white px-4 py-4 sm:px-6">
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={closeDeleteModal}
-                  className="flex-1 rounded-xl bg-gray-200 py-3 font-semibold text-gray-800 transition hover:bg-gray-300"
-                >
-                  Cancel
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleConfirmDelete}
-                  disabled={
-                    deleteStatus === 'loading' ||
-                    confirmText.trim().toLowerCase() !== (userToDelete.fullName || '').trim().toLowerCase()
-                  }
-                  className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-red-600 py-3 font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {deleteStatus === 'loading' ? (
-                    <>
-                      <Loader className="animate-spin" size={18} />
-                      Deleting...
-                    </>
-                  ) : (
-                    <>
-                      <Trash2 size={18} />
-                      Delete Permanently
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );
 };
+
+const StatCard = ({ icon, label, value, color }) => {
+  const colors = {
+    blue: {
+      box: 'bg-blue-100 text-blue-600',
+      value: 'text-blue-600',
+    },
+    emerald: {
+      box: 'bg-emerald-100 text-emerald-600',
+      value: 'text-emerald-600',
+    },
+    green: {
+      box: 'bg-green-100 text-green-600',
+      value: 'text-green-600',
+    },
+    indigo: {
+      box: 'bg-indigo-100 text-indigo-600',
+      value: 'text-indigo-600',
+    },
+  };
+
+  const style = colors[color] || colors.blue;
+
+  return (
+    <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+      <div
+        className={`mb-3 flex h-11 w-11 items-center justify-center rounded-xl ${style.box}`}
+      >
+        {icon}
+      </div>
+      <p className="text-sm text-gray-500">{label}</p>
+      <p className={`mt-1 text-2xl font-bold ${style.value}`}>
+        {value}
+      </p>
+    </div>
+  );
+};
+
+const SortButton = ({ label, onClick }) => (
+  <button
+    onClick={onClick}
+    className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
+    type="button"
+  >
+    Sort by {label}
+  </button>
+);
+
+const ActionButton = ({ children, title, color, onClick, disabled }) => {
+  const colors = {
+    blue: 'bg-blue-50 text-blue-600 hover:bg-blue-100',
+    purple: 'bg-purple-50 text-purple-600 hover:bg-purple-100',
+    red: 'bg-red-50 text-red-600 hover:bg-red-100',
+  };
+
+  return (
+    <button
+      title={title}
+      onClick={onClick}
+      disabled={disabled}
+      className={`flex h-9 w-9 items-center justify-center rounded-lg transition disabled:opacity-50 ${colors[color]}`}
+      type="button"
+    >
+      {children}
+    </button>
+  );
+};
+
+const PageButton = ({ children, onClick, disabled, label }) => (
+  <button
+    type="button"
+    aria-label={label}
+    onClick={onClick}
+    disabled={disabled}
+    className="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40"
+  >
+    {children}
+  </button>
+);
+
+const Modal = ({ title, onClose, children }) => (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+    <div className="flex max-h-[92vh] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+      <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4">
+        <h3 className="text-lg font-bold text-gray-900">{title}</h3>
+        <button
+          onClick={onClose}
+          type="button"
+          className="rounded-lg p-1 text-gray-400 hover:bg-gray-100"
+          aria-label="Close modal"
+        >
+          <X size={21} />
+        </button>
+      </div>
+      <div className="overflow-y-auto p-5">{children}</div>
+    </div>
+  </div>
+);
 
 export default Users;
