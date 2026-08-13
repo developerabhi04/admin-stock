@@ -27,6 +27,11 @@ import {
   Loader,
   CheckCircle2,
   TrendingUp,
+  TrendingDown,
+  Activity,
+  Target,
+  ShoppingBag,
+  Clock3,
   CalendarDays,
   Phone,
   Trash2,
@@ -34,7 +39,6 @@ import {
   ArrowUpDown,
   ChevronUp,
   ChevronDown,
-  ShieldCheck,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
@@ -65,6 +69,8 @@ const Users = () => {
     listStatus,
     totalUsers = 0,
     totalWalletBalance = 0,
+    totalWithdrawals = 0,
+    pendingWithdrawals = 0,
     totalPages = 0,
     currentPage = 1,
     pageSize = 20,
@@ -75,10 +81,11 @@ const Users = () => {
     deleteError,
   } = useSelector((state) => state.users);
 
-  const verifiedUsers = Number(stats?.verifiedUsers || 0);
-  const totalInvested = Number(
+  const totalInterestEarned = Number(stats?.totalInterestEarned || 0);
+  const totalInvestedAmountAllUsers = Number(
     stats?.totalInvested ?? stats?.totalInvestedAmount ?? 0
   );
+  const totalOrdersCountAllUsers = Number(stats?.totalOrders || 0);
 
   const [searchTerm, setSearchTerm] = useState(filters.search || '');
   const [showFilters, setShowFilters] = useState(false);
@@ -97,6 +104,11 @@ const Users = () => {
   const [userToDelete, setUserToDelete] = useState(null);
   const [confirmText, setConfirmText] = useState('');
   const [deletingUserId, setDeletingUserId] = useState(null);
+
+  const activeUsersOnPage = useMemo(
+    () => users.filter((user) => user.isActive !== false).length,
+    [users]
+  );
 
   useEffect(() => {
     dispatch(
@@ -125,15 +137,8 @@ const Users = () => {
     const maxVisiblePages = 5;
     const pages = [];
 
-    let start = Math.max(
-      1,
-      currentPage - Math.floor(maxVisiblePages / 2)
-    );
-
-    let end = Math.min(
-      totalPages,
-      start + maxVisiblePages - 1
-    );
+    let start = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    let end = Math.min(totalPages, start + maxVisiblePages - 1);
 
     if (end - start + 1 < maxVisiblePages) {
       start = Math.max(1, end - maxVisiblePages + 1);
@@ -171,9 +176,7 @@ const Users = () => {
 
   const handleSort = (field) => {
     const newOrder =
-      filters.sortBy === field && filters.sortOrder === 'desc'
-        ? 'asc'
-        : 'desc';
+      filters.sortBy === field && filters.sortOrder === 'desc' ? 'asc' : 'desc';
 
     dispatch(
       setFilters({
@@ -185,14 +188,7 @@ const Users = () => {
   };
 
   const handlePageChange = (page) => {
-    if (
-      page < 1 ||
-      page > totalPages ||
-      page === currentPage
-    ) {
-      return;
-    }
-
+    if (page < 1 || page > totalPages || page === currentPage) return;
     dispatch(setPage(page));
   };
 
@@ -220,14 +216,7 @@ const Users = () => {
       return;
     }
 
-    const headers = [
-      'Name',
-      'Phone',
-      'Wallet Balance',
-      'Invested',
-      'Joined',
-      'Verified',
-    ];
+    const headers = ['Name', 'Phone', 'Wallet Balance', 'Invested', 'Joined', 'Verified'];
 
     const rows = users.map((user) => [
       user.fullName || '',
@@ -239,17 +228,10 @@ const Users = () => {
     ]);
 
     const csv = [headers, ...rows]
-      .map((row) =>
-        row
-          .map((value) => `"${String(value).replace(/"/g, '""')}"`)
-          .join(',')
-      )
+      .map((row) => row.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(','))
       .join('\n');
 
-    const blob = new Blob([csv], {
-      type: 'text/csv;charset=utf-8;',
-    });
-
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
@@ -268,20 +250,13 @@ const Users = () => {
     setShowNotificationModal(false);
     setSelectedUser(null);
     setSendToAll(false);
-    setNotificationData({
-      title: '',
-      message: '',
-      type: 'general',
-    });
+    setNotificationData({ title: '', message: '', type: 'general' });
   };
 
   const handleSubmitNotification = async (event) => {
     event.preventDefault();
 
-    if (
-      !notificationData.title.trim() ||
-      !notificationData.message.trim()
-    ) {
+    if (!notificationData.title.trim() || !notificationData.message.trim()) {
       alert('Please fill in all notification fields.');
       return;
     }
@@ -293,19 +268,13 @@ const Users = () => {
         await adminAPI.sendNotificationToAll(notificationData);
         alert(`Notification sent to all ${totalUsers} users.`);
       } else if (selectedUser?._id) {
-        await adminAPI.sendNotificationToUser(
-          selectedUser._id,
-          notificationData
-        );
+        await adminAPI.sendNotificationToUser(selectedUser._id, notificationData);
         alert(`Notification sent to ${selectedUser.fullName}.`);
       }
 
       resetNotificationModal();
     } catch (requestError) {
-      alert(
-        requestError.response?.data?.message ||
-        'Failed to send notification.'
-      );
+      alert(requestError.response?.data?.message || 'Failed to send notification.');
     } finally {
       setSendingNotification(false);
     }
@@ -329,13 +298,8 @@ const Users = () => {
   const handleConfirmDelete = async () => {
     if (!userToDelete?._id) return;
 
-    const expectedName = (userToDelete.fullName || '')
-      .trim()
-      .toLowerCase();
-
-    if (confirmText.trim().toLowerCase() !== expectedName) {
-      return;
-    }
+    const expectedName = (userToDelete.fullName || '').trim().toLowerCase();
+    if (confirmText.trim().toLowerCase() !== expectedName) return;
 
     try {
       setDeletingUserId(userToDelete._id);
@@ -344,8 +308,6 @@ const Users = () => {
       closeDeleteModal();
       dispatch(fetchUserStats());
 
-      // If the deleted user was the only user on the last page,
-      // load the previous page.
       if (users.length === 1 && currentPage > 1) {
         dispatch(setPage(currentPage - 1));
       }
@@ -390,9 +352,7 @@ const Users = () => {
         <div className="mb-5 rounded-full bg-red-50 p-5">
           <AlertCircle className="text-red-500" size={46} />
         </div>
-        <h2 className="mb-2 text-2xl font-bold text-gray-800">
-          Failed to Load Users
-        </h2>
+        <h2 className="mb-2 text-2xl font-bold text-gray-800">Failed to Load Users</h2>
         <p className="mb-5 max-w-md text-center text-gray-600">
           {error || 'Unable to load users.'}
         </p>
@@ -412,12 +372,8 @@ const Users = () => {
     <div className="min-h-screen bg-gray-50 p-3 sm:p-5 lg:p-7">
       <div className="mb-6 flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">
-            Users Management
-          </h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Manage active users, balances and account actions
-          </p>
+          <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">Users Management</h1>
+          <p className="mt-1 text-sm text-gray-500">{totalUsers} registered users</p>
         </div>
 
         <div className="flex flex-wrap gap-3">
@@ -436,10 +392,7 @@ const Users = () => {
             className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
             type="button"
           >
-            <RefreshCw
-              size={18}
-              className={listStatus === 'loading' ? 'animate-spin' : ''}
-            />
+            <RefreshCw size={18} className={listStatus === 'loading' ? 'animate-spin' : ''} />
             Refresh
           </button>
 
@@ -449,36 +402,100 @@ const Users = () => {
             type="button"
           >
             <Download size={18} />
-            Export Page
+            Export
           </button>
         </div>
       </div>
 
-      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard
-          icon={<UsersIcon size={22} />}
-          label="Total Users"
-          value={totalUsers}
-          color="blue"
-        />
-        <StatCard
-          icon={<ShieldCheck size={22} />}
-          label="Verified Users"
-          value={verifiedUsers}
-          color="emerald"
-        />
-        <StatCard
-          icon={<Wallet size={22} />}
-          label="Total Wallet Balance"
-          value={formatCompactLakh(totalWalletBalance)}
-          color="green"
-        />
-        <StatCard
-          icon={<TrendingUp size={22} />}
-          label="Total Invested"
-          value={formatCompactLakh(totalInvested)}
-          color="indigo"
-        />
+      {/* Restored original 6-card stats section */}
+      <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-100">
+              <UsersIcon className="text-blue-600" size={24} />
+            </div>
+            <Activity className="text-blue-500" size={20} />
+          </div>
+          <p className="mb-1 text-sm text-gray-600">Total Users</p>
+          <p className="text-3xl font-bold text-gray-900">{totalUsers}</p>
+          <p className="mt-2 text-xs text-gray-500">{activeUsersOnPage} active in current page</p>
+        </div>
+
+        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-green-100">
+              <Wallet className="text-green-600" size={24} />
+            </div>
+            <Wallet className="text-green-500" size={20} />
+          </div>
+          <p className="mb-1 text-sm text-gray-600">Total Wallet Balance</p>
+          <p className="text-3xl font-bold text-green-600">
+            {formatCompactLakh(totalWalletBalance)}
+          </p>
+          <p className="mt-2 text-xs text-gray-500">{formatCurrency(totalWalletBalance)}</p>
+        </div>
+
+        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-purple-100">
+              <TrendingUp className="text-purple-600" size={24} />
+            </div>
+            <Activity className="text-purple-500" size={20} />
+          </div>
+          <p className="mb-1 text-sm text-gray-600">Total Interest</p>
+          <p className="text-3xl font-bold text-purple-600">
+            {formatCompactLakh(totalInterestEarned)}
+          </p>
+          <p className="mt-2 text-xs text-gray-500">
+            {formatCurrency(totalInterestEarned)} all-time, all users
+          </p>
+        </div>
+
+        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-orange-100">
+              <TrendingDown className="text-orange-600" size={24} />
+            </div>
+            <Clock3 className="text-orange-500" size={20} />
+          </div>
+          <p className="mb-1 text-sm text-gray-600">Pending Withdrawals</p>
+          <p className="text-3xl font-bold text-orange-600">
+            {formatCompactLakh(pendingWithdrawals)}
+          </p>
+          <p className="mt-2 text-xs text-gray-500">
+            Total withdrawn: {formatCompactLakh(totalWithdrawals)}
+          </p>
+        </div>
+
+        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-indigo-100">
+              <Target className="text-indigo-600" size={24} />
+            </div>
+            <Activity className="text-indigo-500" size={20} />
+          </div>
+          <p className="mb-1 text-sm text-gray-600">Total Invested (All Users)</p>
+          <p className="text-3xl font-bold text-indigo-600">
+            {formatCompactLakh(totalInvestedAmountAllUsers)}
+          </p>
+          <p className="mt-2 text-xs text-gray-500">
+            {formatCurrency(totalInvestedAmountAllUsers)} principal invested across all users
+          </p>
+        </div>
+
+        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-teal-100">
+              <ShoppingBag className="text-teal-600" size={24} />
+            </div>
+            <Activity className="text-teal-500" size={20} />
+          </div>
+          <p className="mb-1 text-sm text-gray-600">Total Orders / Investments</p>
+          <p className="text-3xl font-bold text-teal-600">{totalOrdersCountAllUsers}</p>
+          <p className="mt-2 text-xs text-gray-500">
+            All orders/investments created by all users
+          </p>
+        </div>
       </div>
 
       <div className="mb-6 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5">
@@ -517,18 +534,9 @@ const Users = () => {
 
         {showFilters && (
           <div className="mt-4 flex flex-wrap gap-2 border-t border-gray-200 pt-4">
-            <SortButton
-              label="Date"
-              onClick={() => handleSort('createdAt')}
-            />
-            <SortButton
-              label="Name"
-              onClick={() => handleSort('fullName')}
-            />
-            <SortButton
-              label="Balance"
-              onClick={() => handleSort('walletBalance')}
-            />
+            <SortButton label="Date" onClick={() => handleSort('createdAt')} />
+            <SortButton label="Name" onClick={() => handleSort('fullName')} />
+            <SortButton label="Balance" onClick={() => handleSort('walletBalance')} />
 
             {filters.search && (
               <button
@@ -571,13 +579,9 @@ const Users = () => {
         {users.length === 0 ? (
           <div className="p-12 text-center">
             <UsersIcon className="mx-auto mb-4 text-gray-300" size={58} />
-            <h3 className="mb-2 text-xl font-bold text-gray-800">
-              No Users Found
-            </h3>
+            <h3 className="mb-2 text-xl font-bold text-gray-800">No Users Found</h3>
             <p className="text-gray-500">
-              {filters.search
-                ? 'Try adjusting your search criteria.'
-                : 'No active users are available.'}
+              {filters.search ? 'Try adjusting your search criteria.' : 'No active users are available.'}
             </p>
           </div>
         ) : (
@@ -586,10 +590,7 @@ const Users = () => {
               <thead className="border-b border-gray-200 bg-gray-50">
                 <tr>
                   <SortHeader field="fullName" label="User" />
-                  <SortHeader
-                    field="walletBalance"
-                    label="Wallet Balance"
-                  />
+                  <SortHeader field="walletBalance" label="Wallet Balance" />
                   <th className="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
                     Invested
                   </th>
@@ -615,16 +616,12 @@ const Users = () => {
                               {user.fullName || 'Unknown User'}
                             </p>
                             {user.isVerified && (
-                              <CheckCircle2
-                                size={14}
-                                className="shrink-0 text-emerald-500"
-                              />
+                              <CheckCircle2 size={14} className="shrink-0 text-emerald-500" />
                             )}
                           </div>
                           <p className="flex items-center gap-1 text-xs text-gray-500">
                             <Phone size={11} />
-                            {user.countryCode || ''}{' '}
-                            {user.phoneNumber || '-'}
+                            {user.countryCode || ''} {user.phoneNumber || '-'}
                           </p>
                         </div>
                       </div>
@@ -650,9 +647,7 @@ const Users = () => {
                         <ActionButton
                           title="View user"
                           color="blue"
-                          onClick={() =>
-                            navigate(`/dashboard/users/${user._id}`)
-                          }
+                          onClick={() => navigate(`/dashboard/users/${user._id}`)}
                         >
                           <Eye size={16} />
                         </ActionButton>
@@ -688,27 +683,14 @@ const Users = () => {
 
         <div className="flex flex-col items-center justify-between gap-4 border-t border-gray-200 bg-gray-50 px-5 py-4 sm:flex-row">
           <p className="text-sm text-gray-600">
-            Showing{' '}
-            <span className="font-bold text-gray-900">
-              {users.length}
-            </span>{' '}
-            users on page{' '}
-            <span className="font-bold text-gray-900">
-              {currentPage}
-            </span>{' '}
-            of{' '}
-            <span className="font-bold text-gray-900">
-              {totalPages || 1}
-            </span>{' '}
-            — {totalUsers.toLocaleString('en-IN')} total users
+            Showing <span className="font-bold text-gray-900">{users.length}</span> users on page{' '}
+            <span className="font-bold text-gray-900">{currentPage}</span> of{' '}
+            <span className="font-bold text-gray-900">{totalPages || 1}</span> —{' '}
+            {totalUsers.toLocaleString('en-IN')} total users
           </p>
 
           <div className="flex items-center gap-1.5">
-            <PageButton
-              disabled={currentPage === 1}
-              onClick={() => handlePageChange(1)}
-              label="First page"
-            >
+            <PageButton disabled={currentPage === 1} onClick={() => handlePageChange(1)} label="First page">
               <ChevronsLeft size={16} />
             </PageButton>
 
@@ -720,9 +702,7 @@ const Users = () => {
               <ChevronLeft size={16} />
             </PageButton>
 
-            {pageNumbers[0] > 1 && (
-              <span className="px-1 text-gray-400">...</span>
-            )}
+            {pageNumbers[0] > 1 && <span className="px-1 text-gray-400">...</span>}
 
             {pageNumbers.map((page) => (
               <button
@@ -776,10 +756,7 @@ const Users = () => {
             <select
               value={notificationData.type}
               onChange={(event) =>
-                setNotificationData((previous) => ({
-                  ...previous,
-                  type: event.target.value,
-                }))
+                setNotificationData((previous) => ({ ...previous, type: event.target.value }))
               }
               className="w-full rounded-xl border border-gray-200 px-4 py-3"
             >
@@ -795,10 +772,7 @@ const Users = () => {
               maxLength={50}
               value={notificationData.title}
               onChange={(event) =>
-                setNotificationData((previous) => ({
-                  ...previous,
-                  title: event.target.value,
-                }))
+                setNotificationData((previous) => ({ ...previous, title: event.target.value }))
               }
               placeholder="Notification title"
               className="w-full rounded-xl border border-gray-200 px-4 py-3"
@@ -810,10 +784,7 @@ const Users = () => {
               rows={5}
               value={notificationData.message}
               onChange={(event) =>
-                setNotificationData((previous) => ({
-                  ...previous,
-                  message: event.target.value,
-                }))
+                setNotificationData((previous) => ({ ...previous, message: event.target.value }))
               }
               placeholder="Notification message"
               className="w-full resize-none rounded-xl border border-gray-200 px-4 py-3"
@@ -832,9 +803,7 @@ const Users = () => {
                 disabled={sendingNotification}
                 className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-purple-600 py-3 font-semibold text-white disabled:opacity-50"
               >
-                {sendingNotification && (
-                  <Loader className="animate-spin" size={17} />
-                )}
+                {sendingNotification && <Loader className="animate-spin" size={17} />}
                 {sendingNotification ? 'Sending...' : 'Send Notification'}
               </button>
             </div>
@@ -846,12 +815,8 @@ const Users = () => {
         <Modal title="Delete User Permanently" onClose={closeDeleteModal}>
           <div className="space-y-4">
             <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
-              <p className="font-bold text-gray-900">
-                {userToDelete.fullName}
-              </p>
-              <p className="text-sm text-gray-500">
-                {userToDelete.phoneNumber}
-              </p>
+              <p className="font-bold text-gray-900">{userToDelete.fullName}</p>
+              <p className="text-sm text-gray-500">{userToDelete.phoneNumber}</p>
               <p className="mt-1 text-sm font-semibold text-gray-700">
                 Wallet: {formatCurrency(userToDelete.walletBalance)}
               </p>
@@ -860,17 +825,13 @@ const Users = () => {
             <div className="flex gap-2 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
               <ShieldAlert size={18} className="shrink-0" />
               <span>
-                This permanently deletes the profile, bank accounts,
-                deposits, withdrawals, transactions and investments.
+                This permanently deletes the profile, bank accounts, deposits, withdrawals,
+                transactions and investments.
               </span>
             </div>
 
             <label className="block text-sm font-medium text-gray-700">
-              Type{' '}
-              <span className="font-bold text-gray-900">
-                {userToDelete.fullName}
-              </span>{' '}
-              to confirm.
+              Type <span className="font-bold text-gray-900">{userToDelete.fullName}</span> to confirm.
               <input
                 autoFocus
                 value={confirmText}
@@ -899,8 +860,7 @@ const Users = () => {
                 onClick={handleConfirmDelete}
                 disabled={
                   deleteStatus === 'loading' ||
-                  confirmText.trim().toLowerCase() !==
-                  userToDelete.fullName.trim().toLowerCase()
+                  confirmText.trim().toLowerCase() !== userToDelete.fullName.trim().toLowerCase()
                 }
                 className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-red-600 py-3 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
               >
@@ -917,43 +877,6 @@ const Users = () => {
           </div>
         </Modal>
       )}
-    </div>
-  );
-};
-
-const StatCard = ({ icon, label, value, color }) => {
-  const colors = {
-    blue: {
-      box: 'bg-blue-100 text-blue-600',
-      value: 'text-blue-600',
-    },
-    emerald: {
-      box: 'bg-emerald-100 text-emerald-600',
-      value: 'text-emerald-600',
-    },
-    green: {
-      box: 'bg-green-100 text-green-600',
-      value: 'text-green-600',
-    },
-    indigo: {
-      box: 'bg-indigo-100 text-indigo-600',
-      value: 'text-indigo-600',
-    },
-  };
-
-  const style = colors[color] || colors.blue;
-
-  return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-      <div
-        className={`mb-3 flex h-11 w-11 items-center justify-center rounded-xl ${style.box}`}
-      >
-        {icon}
-      </div>
-      <p className="text-sm text-gray-500">{label}</p>
-      <p className={`mt-1 text-2xl font-bold ${style.value}`}>
-        {value}
-      </p>
     </div>
   );
 };
