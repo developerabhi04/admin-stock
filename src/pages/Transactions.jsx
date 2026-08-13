@@ -224,7 +224,7 @@ const Transactions = () => {
             className="flex items-center justify-center gap-2 rounded-xl bg-gray-100 px-6 py-3 font-semibold text-gray-700 transition hover:bg-gray-200"
             type="button"
           >
-            <ListFilter size={20} />
+            <ListFilter size={50} />
             Filters
             {activeFilterCount > 0 && (
               <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">
