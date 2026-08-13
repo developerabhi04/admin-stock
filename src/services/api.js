@@ -100,7 +100,7 @@ export const adminAPI = {
   },
   getUserStats: () => api.get('/admin/users/stats'),
   getUserDetails: (userId) => api.get(`/admin/users/${userId}`),
-  updateUserBalance: (data) => api.post('/admin/users/update-balance', data),
+  updateUserBalance: (data) => api.post('/admin/users/update-balance', data),  
   //user
   deleteUser: (userId) => api.delete(`/admin/users/${userId}`),
 
@@ -119,6 +119,9 @@ export const adminAPI = {
     api.get('/admin/market/indices', { params: { featured: true } }),
 
   getMarketStats: () => api.get('/admin/market/stats'),
+
+  //user
+   deleteUser: (userId) => api.delete(`/admin/users/${userId}`),
 
 
   // inside adminAPI object in api.js — replace these two lines
