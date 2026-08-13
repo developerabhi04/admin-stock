@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchTransactions, setFilters, setPage, setLimit } from '../store/slices/transactionsSlice';
 import {
-  Filter,
   Search,
   RefreshCw,
   ChevronLeft,
@@ -446,8 +445,8 @@ const Transactions = () => {
                   key={page}
                   onClick={() => goToPage(page)}
                   className={`flex h-9 w-9 items-center justify-center rounded-lg text-sm font-medium transition ${page === currentPage
-                      ? 'bg-blue-600 text-white'
-                      : 'border border-gray-200 bg-white text-gray-700 hover:bg-gray-100'
+                    ? 'bg-blue-600 text-white'
+                    : 'border border-gray-200 bg-white text-gray-700 hover:bg-gray-100'
                     }`}
                   type="button"
                 >
