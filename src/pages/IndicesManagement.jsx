@@ -759,7 +759,7 @@ const IndicesManagement = () => {
                                     ))}
                                 </select>
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                                         Last open <span className="text-red-500">*</span>
@@ -789,7 +789,8 @@ const IndicesManagement = () => {
                                     />
                                 </div>
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                                         52 weeks/High  <span className="text-red-500">*</span>
@@ -820,28 +821,11 @@ const IndicesManagement = () => {
                                     />
                                 </div>
 
-                                <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                        Default Daily Return
-                                    </label>
-                                    <input
-                                        type="number"
-                                        step="0.01"
-                                        min="0"
-                                        value={formData.defaultDailyRate}
-                                        onChange={(e) => handleChange('defaultDailyRate', e.target.value)}
-                                        className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
-                                        placeholder="e.g., 1 or 2"
-                                    />
-                                    <p className="text-xs text-gray-500 mt-2">
-                                        Shows fixed daily return in the app and can be used as default return.
-                                    </p>
-                                </div>
+
+
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-
-
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                                         Minimum Investment <span className="text-red-500">*</span>
@@ -863,6 +847,24 @@ const IndicesManagement = () => {
 
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        Default Daily Return
+                                    </label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        value={formData.defaultDailyRate}
+                                        onChange={(e) => handleChange('defaultDailyRate', e.target.value)}
+                                        className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
+                                        placeholder="e.g., 1 or 2"
+                                    />
+                                    <p className="text-xs text-gray-500 mt-2">
+                                        Shows fixed daily return in the app and can be used as default return.
+                                    </p>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
                                         Period Days <span className="text-red-500">*</span>
                                     </label>
                                     <input
@@ -879,6 +881,7 @@ const IndicesManagement = () => {
                                         Set how many days this index investment stays locked.
                                     </p>
                                 </div>
+
                             </div>
 
                             <div>
