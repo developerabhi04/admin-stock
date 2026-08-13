@@ -759,26 +759,40 @@ const IndicesManagement = () => {
                                     ))}
                                 </select>
                             </div>
-
-                            <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                    Current Value <span className="text-red-500">*</span>
-                                </label>
-                                <input
-                                    type="number"
-                                    step="0.01"
-                                    value={formData.currentValue}
-                                    onChange={(e) => handleChange('currentValue', e.target.value)}
-                                    className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
-                                    placeholder="19435.30"
-                                    required
-                                />
-                            </div>
-
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                        High Value <span className="text-red-500">*</span>
+                                        Last open <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        value={formData.currentValue}
+                                        onChange={(e) => handleChange('currentValue', e.target.value)}
+                                        className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
+                                        placeholder="19435.30"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        Last Close <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        value={formData.previousClose}
+                                        onChange={(e) => handleChange('previousClose', e.target.value)}
+                                        className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
+                                        placeholder="19390.00"
+                                        required
+                                    />
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        52 weeks/High  <span className="text-red-500">*</span>
                                     </label>
                                     <input
                                         type="number"
@@ -793,7 +807,7 @@ const IndicesManagement = () => {
 
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                        Low Value <span className="text-red-500">*</span>
+                                        52 weeks/Low  <span className="text-red-500">*</span>
                                     </label>
                                     <input
                                         type="number"
@@ -826,20 +840,7 @@ const IndicesManagement = () => {
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                        Previous Close <span className="text-red-500">*</span>
-                                    </label>
-                                    <input
-                                        type="number"
-                                        step="0.01"
-                                        value={formData.previousClose}
-                                        onChange={(e) => handleChange('previousClose', e.target.value)}
-                                        className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
-                                        placeholder="19390.00"
-                                        required
-                                    />
-                                </div>
+
 
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">
