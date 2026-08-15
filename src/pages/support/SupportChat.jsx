@@ -5,7 +5,6 @@ import {
     Paperclip,
     CheckCheck,
     CircleUserRound,
-    RefreshCw,
     CheckCircle2,
     Loader2,
     MessageCircle,
@@ -69,6 +68,7 @@ const SupportChat = () => {
     const [sending, setSending] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [socketConnected, setSocketConnected] = useState(false);
+    const [isResolving, setIsResolving] = useState(false)
 
     const messagesRef = useRef(null);
     const fileInputRef = useRef(null);
@@ -420,9 +420,17 @@ const SupportChat = () => {
     };
 
     const resolveConversation = async () => {
-        if (!selectedConversation) return;
+        if (
+            !selectedConversation ||
+            selectedConversation.status === 'resolved' ||
+            isResolving
+        ) {
+            return;
+        }
 
         try {
+            setIsResolving(true);
+
             const response = await fetch(
                 `${API_URL}/admin/support/conversations/${selectedConversation.id}/resolve`,
                 {
@@ -444,9 +452,16 @@ const SupportChat = () => {
                 status: 'resolved',
             }));
 
+            setMessageText('');
+
             await fetchConversations();
         } catch (error) {
-            alert(error.message || 'Failed to resolve conversation');
+            alert(
+                error.message ||
+                'Failed to resolve conversation'
+            );
+        } finally {
+            setIsResolving(false);
         }
     };
 
@@ -475,21 +490,29 @@ const SupportChat = () => {
                                     : 'Connecting'}
                             </p>
                         </div>
-
                         <button
                             type="button"
-                            onClick={fetchConversations}
-                            className="rounded-lg p-2 text-gray-500 hover:bg-white hover:text-gray-900"
-                            title="Refresh conversations"
+                            onClick={resolveConversation}
+                            disabled={
+                                selectedConversation.status === 'resolved' ||
+                                isResolving
+                            }
+                            className="flex items-center gap-2 rounded-lg border border-emerald-200 px-3 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50"
                         >
-                            <RefreshCw
-                                size={17}
-                                className={
-                                    loadingConversations
-                                        ? 'animate-spin'
-                                        : ''
-                                }
-                            />
+                            {isResolving ? (
+                                <Loader2
+                                    className="animate-spin"
+                                    size={16}
+                                />
+                            ) : (
+                                <CheckCircle2 size={16} />
+                            )}
+
+                            {isResolving
+                                ? 'Resolving...'
+                                : selectedConversation.status === 'resolved'
+                                    ? 'Resolved'
+                                    : 'Resolve'}
                         </button>
                     </div>
 
@@ -732,78 +755,87 @@ const SupportChat = () => {
                             )}
                         </div>
 
-                        <footer className="border-t border-gray-200 bg-white p-4">
-                            <div className="flex items-end gap-2">
-                                <input
-                                    ref={fileInputRef}
-                                    type="file"
-                                    accept="image/jpeg,image/png,image/webp,image/gif"
-                                    onChange={uploadImage}
-                                    className="hidden"
-                                />
+                        {selectedConversation.status !== 'resolved' ? (
+                            <footer className="border-t border-gray-200 bg-white p-4">
+                                <div className="flex items-end gap-2">
+                                    <input
+                                        ref={fileInputRef}
+                                        type="file"
+                                        accept="image/jpeg,image/png,image/webp,image/gif"
+                                        onChange={uploadImage}
+                                        className="hidden"
+                                    />
 
-                                <button
-                                    type="button"
-                                    onClick={() =>
-                                        fileInputRef.current?.click()
-                                    }
-                                    disabled={uploading || sending}
-                                    className="flex h-11 w-11 items-center justify-center rounded-xl bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-50"
-                                    title="Attach image"
-                                >
-                                    {uploading ? (
-                                        <Loader2
-                                            className="animate-spin"
-                                            size={19}
-                                        />
-                                    ) : (
-                                        <Paperclip size={19} />
-                                    )}
-                                </button>
-
-                                <textarea
-                                    value={messageText}
-                                    onChange={(event) =>
-                                        setMessageText(event.target.value)
-                                    }
-                                    onKeyDown={(event) => {
-                                        if (
-                                            event.key === 'Enter' &&
-                                            !event.shiftKey
-                                        ) {
-                                            event.preventDefault();
-                                            sendMessage();
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            fileInputRef.current?.click()
                                         }
-                                    }}
-                                    rows={1}
-                                    placeholder="Write a reply..."
-                                    className="max-h-32 min-h-11 flex-1 resize-none rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                                />
+                                        disabled={uploading || sending}
+                                        className="flex h-11 w-11 items-center justify-center rounded-xl bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-50"
+                                        title="Attach image"
+                                    >
+                                        {uploading ? (
+                                            <Loader2
+                                                className="animate-spin"
+                                                size={19}
+                                            />
+                                        ) : (
+                                            <Paperclip size={19} />
+                                        )}
+                                    </button>
 
-                                <button
-                                    type="button"
-                                    onClick={sendMessage}
-                                    disabled={
-                                        !messageText.trim() || sending
-                                    }
-                                    className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
-                                >
-                                    {sending ? (
-                                        <Loader2
-                                            className="animate-spin"
-                                            size={19}
-                                        />
-                                    ) : (
-                                        <Send size={19} />
-                                    )}
-                                </button>
+                                    <textarea
+                                        value={messageText}
+                                        onChange={(event) =>
+                                            setMessageText(event.target.value)
+                                        }
+                                        onKeyDown={(event) => {
+                                            if (
+                                                event.key === 'Enter' &&
+                                                !event.shiftKey
+                                            ) {
+                                                event.preventDefault();
+                                                sendMessage();
+                                            }
+                                        }}
+                                        rows={1}
+                                        placeholder="Write a reply..."
+                                        className="max-h-32 min-h-11 flex-1 resize-none rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                                    />
+
+                                    <button
+                                        type="button"
+                                        onClick={sendMessage}
+                                        disabled={
+                                            !messageText.trim() ||
+                                            sending
+                                        }
+                                        className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                                    >
+                                        {sending ? (
+                                            <Loader2
+                                                className="animate-spin"
+                                                size={19}
+                                            />
+                                        ) : (
+                                            <Send size={19} />
+                                        )}
+                                    </button>
+                                </div>
+
+                                <p className="mt-2 text-xs text-gray-400">
+                                    Press Enter to send · Shift + Enter for a new line
+                                </p>
+                            </footer>
+                        ) : (
+                            <div className="flex items-center justify-center border-t border-gray-200 bg-gray-50 px-5 py-5">
+                                <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
+                                    <CheckCircle2 size={18} />
+                                    This conversation has been resolved. Replies are disabled.
+                                </div>
                             </div>
-
-                            <p className="mt-2 text-xs text-gray-400">
-                                Press Enter to send · Shift + Enter for a
-                                new line
-                            </p>
-                        </footer>
+                        )}
                     </>
                 )}
             </section>
