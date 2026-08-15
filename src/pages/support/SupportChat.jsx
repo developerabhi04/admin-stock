@@ -5,6 +5,7 @@ import {
     Paperclip,
     CheckCheck,
     CircleUserRound,
+    RefreshCw,
     CheckCircle2,
     Loader2,
     MessageCircle,
@@ -51,7 +52,7 @@ const getMessageDisplayName = (message, conversation) => {
         !message.senderName ||
         message.senderName.toLowerCase() === 'admin'
     ) {
-        return 'TradeHub Support';
+        return conversation?.assignedAgentName || 'TradeHub Support';
     }
 
     return message.senderName;
@@ -68,7 +69,7 @@ const SupportChat = () => {
     const [sending, setSending] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [socketConnected, setSocketConnected] = useState(false);
-    const [isResolving, setIsResolving] = useState(false)
+    const [isResolving, setIsResolving] = useState(false);
 
     const messagesRef = useRef(null);
     const fileInputRef = useRef(null);
@@ -88,12 +89,10 @@ const SupportChat = () => {
 
     const scrollMessagesToBottom = useCallback(() => {
         setTimeout(() => {
-            if (messagesRef.current) {
-                messagesRef.current.scrollTo({
-                    top: messagesRef.current.scrollHeight,
-                    behavior: 'smooth',
-                });
-            }
+            messagesRef.current?.scrollTo({
+                top: messagesRef.current.scrollHeight,
+                behavior: 'smooth',
+            });
         }, 100);
     }, []);
 
@@ -127,9 +126,7 @@ const SupportChat = () => {
 
             const response = await fetch(
                 `${API_URL}/admin/support/conversations?page=1&limit=100`,
-                {
-                    headers: getHeaders(),
-                }
+                { headers: getHeaders() }
             );
 
             const json = await response.json();
@@ -157,9 +154,7 @@ const SupportChat = () => {
 
                 const response = await fetch(
                     `${API_URL}/admin/support/conversations/${conversationId}/messages?page=1&limit=200`,
-                    {
-                        headers: getHeaders(),
-                    }
+                    { headers: getHeaders() }
                 );
 
                 const json = await response.json();
@@ -213,7 +208,6 @@ const SupportChat = () => {
 
         const onNewSupportMessage = (payload) => {
             console.log('💬 New live support message:', payload);
-
             showBrowserNotification(payload);
 
             setConversations((current) => {
@@ -244,8 +238,7 @@ const SupportChat = () => {
 
                         return {
                             ...conversation,
-                            lastMessage:
-                                payload.text || 'Sent an image',
+                            lastMessage: payload.text || 'Sent an image',
                             lastMessageAt: payload.createdAt,
                             unreadByAdmin: !isCurrentlyOpen,
                         };
@@ -257,8 +250,7 @@ const SupportChat = () => {
                     );
             });
 
-            const activeConversation =
-                selectedConversationRef.current;
+            const activeConversation = selectedConversationRef.current;
 
             if (
                 activeConversation &&
@@ -282,14 +274,7 @@ const SupportChat = () => {
             typeof Notification !== 'undefined' &&
             Notification.permission === 'default'
         ) {
-            Notification.requestPermission()
-                .then((permission) => {
-                    console.log(
-                        'Browser notification permission:',
-                        permission
-                    );
-                })
-                .catch(() => { });
+            Notification.requestPermission().catch(() => { });
         }
 
         return () => {
@@ -298,11 +283,7 @@ const SupportChat = () => {
             socket.off('connect_error', onConnectError);
             socket.off('new_support_message', onNewSupportMessage);
         };
-    }, [
-        fetchConversations,
-        fetchMessages,
-        showBrowserNotification,
-    ]);
+    }, [fetchConversations, fetchMessages, showBrowserNotification]);
 
     const filteredConversations = useMemo(() => {
         const term = search.trim().toLowerCase();
@@ -310,10 +291,8 @@ const SupportChat = () => {
         if (!term) return conversations;
 
         return conversations.filter((conversation) => {
-            const name =
-                conversation.user?.fullName?.toLowerCase() || '';
-            const phone =
-                conversation.user?.phoneNumber?.toLowerCase() || '';
+            const name = conversation.user?.fullName?.toLowerCase() || '';
+            const phone = conversation.user?.phoneNumber?.toLowerCase() || '';
 
             return name.includes(term) || phone.includes(term);
         });
@@ -330,6 +309,7 @@ const SupportChat = () => {
         }
 
         setSelectedConversation(conversation);
+        setMessageText('');
 
         setConversations((current) =>
             current.map((item) =>
@@ -346,7 +326,15 @@ const SupportChat = () => {
     const sendMessage = async () => {
         const text = messageText.trim();
 
-        if (!text || !selectedConversation || sending) return;
+        if (
+            !text ||
+            !selectedConversation ||
+            selectedConversation.status === 'resolved' ||
+            sending ||
+            uploading
+        ) {
+            return;
+        }
 
         try {
             setSending(true);
@@ -366,9 +354,7 @@ const SupportChat = () => {
             const json = await response.json();
 
             if (!response.ok) {
-                throw new Error(
-                    json.message || 'Failed to send message'
-                );
+                throw new Error(json.message || 'Failed to send message');
             }
 
             setMessageText('');
@@ -384,7 +370,16 @@ const SupportChat = () => {
     const uploadImage = async (event) => {
         const file = event.target.files?.[0];
 
-        if (!file || !selectedConversation) return;
+        if (
+            !file ||
+            !selectedConversation ||
+            selectedConversation.status === 'resolved' ||
+            uploading ||
+            sending
+        ) {
+            event.target.value = '';
+            return;
+        }
 
         try {
             setUploading(true);
@@ -404,9 +399,7 @@ const SupportChat = () => {
             const json = await response.json();
 
             if (!response.ok) {
-                throw new Error(
-                    json.message || 'Image upload failed'
-                );
+                throw new Error(json.message || 'Image upload failed');
             }
 
             await fetchMessages(selectedConversation.id);
@@ -447,19 +440,26 @@ const SupportChat = () => {
                 );
             }
 
-            setSelectedConversation((current) => ({
-                ...current,
-                status: 'resolved',
-            }));
+            setSelectedConversation((current) =>
+                current ? { ...current, status: 'resolved' } : null
+            );
+
+            setConversations((current) =>
+                current.map((conversation) =>
+                    String(conversation.id) === String(selectedConversation.id)
+                        ? {
+                            ...conversation,
+                            status: 'resolved',
+                            unreadByAdmin: false,
+                        }
+                        : conversation
+                )
+            );
 
             setMessageText('');
-
             await fetchConversations();
         } catch (error) {
-            alert(
-                error.message ||
-                'Failed to resolve conversation'
-            );
+            alert(error.message || 'Failed to resolve conversation');
         } finally {
             setIsResolving(false);
         }
@@ -490,29 +490,19 @@ const SupportChat = () => {
                                     : 'Connecting'}
                             </p>
                         </div>
+
                         <button
                             type="button"
-                            onClick={resolveConversation}
-                            disabled={
-                                selectedConversation.status === 'resolved' ||
-                                isResolving
-                            }
-                            className="flex items-center gap-2 rounded-lg border border-emerald-200 px-3 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50"
+                            onClick={fetchConversations}
+                            className="rounded-lg p-2 text-gray-500 hover:bg-white hover:text-gray-900"
+                            title="Refresh conversations"
                         >
-                            {isResolving ? (
-                                <Loader2
-                                    className="animate-spin"
-                                    size={16}
-                                />
-                            ) : (
-                                <CheckCircle2 size={16} />
-                            )}
-
-                            {isResolving
-                                ? 'Resolving...'
-                                : selectedConversation.status === 'resolved'
-                                    ? 'Resolved'
-                                    : 'Resolve'}
+                            <RefreshCw
+                                size={17}
+                                className={
+                                    loadingConversations ? 'animate-spin' : ''
+                                }
+                            />
                         </button>
                     </div>
 
@@ -524,9 +514,7 @@ const SupportChat = () => {
 
                         <input
                             value={search}
-                            onChange={(event) =>
-                                setSearch(event.target.value)
-                            }
+                            onChange={(event) => setSearch(event.target.value)}
                             placeholder="Search conversations..."
                             className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-10 pr-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                         />
@@ -534,8 +522,7 @@ const SupportChat = () => {
                 </div>
 
                 <div className="flex-1 overflow-y-auto">
-                    {loadingConversations &&
-                        conversations.length === 0 ? (
+                    {loadingConversations && conversations.length === 0 ? (
                         <div className="flex items-center justify-center p-8">
                             <Loader2
                                 className="animate-spin text-blue-600"
@@ -555,11 +542,8 @@ const SupportChat = () => {
                             <button
                                 key={conversation.id}
                                 type="button"
-                                onClick={() =>
-                                    selectConversation(conversation)
-                                }
-                                className={`flex w-full gap-3 border-b border-gray-200 p-4 text-left transition hover:bg-white ${selectedConversation?.id ===
-                                    conversation.id
+                                onClick={() => selectConversation(conversation)}
+                                className={`flex w-full gap-3 border-b border-gray-200 p-4 text-left transition hover:bg-white ${selectedConversation?.id === conversation.id
                                     ? 'bg-white'
                                     : ''
                                     }`}
@@ -583,8 +567,7 @@ const SupportChat = () => {
                                     </div>
 
                                     <p className="truncate text-xs text-gray-500">
-                                        {conversation.user?.phoneNumber ||
-                                            '-'}
+                                        {conversation.user?.phoneNumber || '-'}
                                     </p>
 
                                     <p className="mt-1 truncate text-sm text-gray-600">
@@ -593,9 +576,7 @@ const SupportChat = () => {
                                     </p>
 
                                     <p className="mt-1 text-[11px] text-gray-400">
-                                        {formatDate(
-                                            conversation.lastMessageAt
-                                        )}
+                                        {formatDate(conversation.lastMessageAt)}
                                     </p>
                                 </div>
                             </button>
@@ -635,8 +616,8 @@ const SupportChat = () => {
                                     </h2>
 
                                     <p className="text-xs text-gray-500">
-                                        {selectedConversation.user
-                                            ?.phoneNumber || '-'}{' '}
+                                        {selectedConversation.user?.phoneNumber ||
+                                            '-'}{' '}
                                         · Agent:{' '}
                                         {selectedConversation.assignedAgentName ||
                                             'TradeHub Support'}
@@ -648,15 +629,26 @@ const SupportChat = () => {
                                 type="button"
                                 onClick={resolveConversation}
                                 disabled={
-                                    selectedConversation.status ===
-                                    'resolved'
+                                    selectedConversation?.status === 'resolved' ||
+                                    isResolving
                                 }
-                                className="flex items-center gap-2 rounded-lg border border-emerald-200 px-3 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-50"
+                                className="flex items-center gap-2 rounded-lg border border-emerald-200 px-3 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50"
                             >
-                                <CheckCircle2 size={16} />
-                                {selectedConversation.status === 'resolved'
-                                    ? 'Resolved'
-                                    : 'Resolve'}
+                                {isResolving ? (
+                                    <Loader2
+                                        className="animate-spin"
+                                        size={16}
+                                    />
+                                ) : (
+                                    <CheckCircle2 size={16} />
+                                )}
+
+                                {isResolving
+                                    ? 'Resolving...'
+                                    : selectedConversation?.status ===
+                                        'resolved'
+                                        ? 'Resolved'
+                                        : 'Resolve'}
                             </button>
                         </header>
 
@@ -677,25 +669,16 @@ const SupportChat = () => {
                                 </div>
                             ) : (
                                 messages.map((message) => {
-                                    const isAdmin =
-                                        message.sender === 'admin';
-
-                                    const imageUrl = getImageUrl(
-                                        message.imageUrl
+                                    const isAdmin = message.sender === 'admin';
+                                    const imageUrl = getImageUrl(message.imageUrl);
+                                    const displayName = getMessageDisplayName(
+                                        message,
+                                        selectedConversation
                                     );
-
-                                    const displayName =
-                                        getMessageDisplayName(
-                                            message,
-                                            selectedConversation
-                                        );
 
                                     return (
                                         <div
-                                            key={
-                                                message._id ||
-                                                message.id
-                                            }
+                                            key={message._id || message.id}
                                             className={`flex ${isAdmin
                                                 ? 'justify-end'
                                                 : 'justify-start'
@@ -713,9 +696,7 @@ const SupportChat = () => {
                                                         : 'text-blue-600'
                                                         }`}
                                                 >
-                                                    <CircleUserRound
-                                                        size={13}
-                                                    />
+                                                    <CircleUserRound size={13} />
                                                     {displayName}
                                                 </div>
 
@@ -739,13 +720,9 @@ const SupportChat = () => {
                                                         : 'text-gray-400'
                                                         }`}
                                                 >
-                                                    {formatDate(
-                                                        message.createdAt
-                                                    )}
+                                                    {formatDate(message.createdAt)}
                                                     {isAdmin && (
-                                                        <CheckCheck
-                                                            size={13}
-                                                        />
+                                                        <CheckCheck size={13} />
                                                     )}
                                                 </div>
                                             </div>
@@ -755,7 +732,7 @@ const SupportChat = () => {
                             )}
                         </div>
 
-                        {selectedConversation.status !== 'resolved' ? (
+                        {selectedConversation?.status !== 'resolved' ? (
                             <footer className="border-t border-gray-200 bg-white p-4">
                                 <div className="flex items-end gap-2">
                                     <input
@@ -809,7 +786,8 @@ const SupportChat = () => {
                                         onClick={sendMessage}
                                         disabled={
                                             !messageText.trim() ||
-                                            sending
+                                            sending ||
+                                            uploading
                                         }
                                         className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
                                     >
@@ -825,14 +803,16 @@ const SupportChat = () => {
                                 </div>
 
                                 <p className="mt-2 text-xs text-gray-400">
-                                    Press Enter to send · Shift + Enter for a new line
+                                    Press Enter to send · Shift + Enter for a
+                                    new line
                                 </p>
                             </footer>
                         ) : (
                             <div className="flex items-center justify-center border-t border-gray-200 bg-gray-50 px-5 py-5">
                                 <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
                                     <CheckCircle2 size={18} />
-                                    This conversation has been resolved. Replies are disabled.
+                                    This conversation has been resolved. Replies
+                                    are disabled.
                                 </div>
                             </div>
                         )}
