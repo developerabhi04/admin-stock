@@ -124,25 +124,18 @@ const Layout = () => {
       label: 'Notifications',
       description: 'Send push notifications'
     },
-
-    // {
-    //   path: '/dashboard/reports',
-    //   icon: BarChart3,
-    //   label: 'Reports',
-    //   description: 'View analytics and reports'
-    // },
-    {
-      path: '/dashboard/admins',
-      icon: ShieldCheckIcon,
-      label: 'Admins',
-      description: 'Manage admin users'
-    },
     {
       path: '/dashboard/support',
       icon: MessageCircle,
       label: 'Support Chat',
       description: 'Manage live customer support conversations',
     },
+    {
+      path: '/dashboard/admins',
+      icon: ShieldCheckIcon,
+      label: 'Admins',
+      description: 'Manage admin users'
+    }
   ];
 
 
