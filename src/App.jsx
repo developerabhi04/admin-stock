@@ -353,16 +353,18 @@ const App = () => {
               </ProtectedRoute>
             }
           />
+
+          <Route
+            path="support"
+            element={
+              <ProtectedRoute>
+                <SupportChat />
+              </ProtectedRoute>
+            }
+          />
         </Route>
 
-        <Route
-          path="support"
-          element={
-            <ProtectedRoute>
-              <SupportChat />
-            </ProtectedRoute>
-          }
-        />
+
 
         <Route
           path="/"
