@@ -32,6 +32,7 @@ import ReferralManagement from './pages/referral/ReferralManagement';
 import { connectAdminSocket } from './services/socket';
 import { fetchPendingPayments } from './store/slices/paymentsSlice';
 import { fetchPendingWithdrawals } from './store/slices/withdrawalsSlice';
+import SupportChat from './pages/support/SupportChat';
 
 
 const ProtectedRoute = ({
@@ -353,6 +354,15 @@ const App = () => {
             }
           />
         </Route>
+
+        <Route
+          path="support"
+          element={
+            <ProtectedRoute>
+              <SupportChat />
+            </ProtectedRoute>
+          }
+        />
 
         <Route
           path="/"

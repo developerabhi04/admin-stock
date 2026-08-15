@@ -22,7 +22,8 @@ export const connectAdminSocket = () => {
         auth: { token },
         transports: ['websocket', 'polling'],
         reconnection: true,
-        reconnectionAttempts: 10,
+        reconnectionAttempts: Infinity,
+        reconnectionDelay: 1000,
     });
 
     socket.on('connect', () => {
@@ -42,9 +43,18 @@ export const connectAdminSocket = () => {
 
 export const getAdminSocket = () => socket;
 
+export const joinSupportConversation = (conversationId) => {
+  const currentSocket = connectAdminSocket();
+  currentSocket?.emit('join_conversation', conversationId);
+};
+
+export const leaveSupportConversation = (conversationId) => {
+  socket?.emit('leave_conversation', conversationId);
+};
+
 export const disconnectAdminSocket = () => {
-    if (socket) {
-        socket.disconnect();
-        socket = null;
-    }
+  if (socket) {
+    socket.disconnect();
+    socket = null;
+  }
 };

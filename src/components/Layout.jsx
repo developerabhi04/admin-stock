@@ -17,6 +17,7 @@ import {
   ShieldCheckIcon,
   Bell,
   Gift,
+  MessageCircle,
 } from 'lucide-react';
 
 const Layout = () => {
@@ -135,6 +136,12 @@ const Layout = () => {
       icon: ShieldCheckIcon,
       label: 'Admins',
       description: 'Manage admin users'
+    },
+    {
+      path: '/dashboard/support',
+      icon: MessageCircle,
+      label: 'Support Chat',
+      description: 'Manage live customer support conversations',
     },
   ];
 
