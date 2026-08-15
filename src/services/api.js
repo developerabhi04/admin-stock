@@ -101,8 +101,7 @@ export const adminAPI = {
   getUserStats: () => api.get('/admin/users/stats'),
   getUserDetails: (userId) => api.get(`/admin/users/${userId}`),
   updateUserBalance: (data) => api.post('/admin/users/update-balance', data),  
-  //user
-  deleteUser: (userId) => api.delete(`/admin/users/${userId}`),
+  
 
 
   getAllStocks: (params) => api.get('/admin/stocks', { params }),
